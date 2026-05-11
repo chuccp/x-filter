@@ -113,7 +113,6 @@ export default class UserBlockView {
 
   renderProgress(p) {
     const log = document.getElementById('block-log');
-    const progressArea = document.getElementById('block-progress-area');
     const logLine = el('div', { className: 'log-line' });
 
     if (p.phase === 'scraping') {

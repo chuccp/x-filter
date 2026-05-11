@@ -29,6 +29,7 @@ async function initDatabase() {
       username TEXT NOT NULL,
       source_url TEXT NOT NULL,
       text_hash TEXT UNIQUE NOT NULL,
+      post_text TEXT,
       label INTEGER,
       labeled_at TEXT,
       model_prediction REAL,
@@ -83,6 +84,19 @@ async function initDatabase() {
     db.run('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)', [k, v]);
   }
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS blocklist (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      added_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Migration: add post_text column to existing databases
+  try { db.run('ALTER TABLE comments ADD COLUMN post_text TEXT'); } catch (e) { /* already exists */ }
+  // Migration: add is_blocked column to blocklist
+  try { db.run('ALTER TABLE blocklist ADD COLUMN is_blocked INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+
   save();
   return db;
 }
@@ -115,8 +129,8 @@ function insertComments(comments) {
     try {
       const hash = crypto.createHash('sha256').update(c.text).digest('hex');
       db.run(
-        'INSERT OR IGNORE INTO comments (text, username, source_url, text_hash) VALUES (?, ?, ?, ?)',
-        [c.text, c.username, c.source_url, hash]
+        'INSERT OR IGNORE INTO comments (text, username, source_url, text_hash, post_text) VALUES (?, ?, ?, ?, ?)',
+        [c.text, c.username, c.source_url, hash, c.post_text || null]
       );
       if (db.getRowsModified() > 0) count++;
     } catch (e) {
@@ -195,7 +209,7 @@ function getLabelStats() {
 }
 
 function exportLabeledComments() {
-  const stmt = db.prepare('SELECT text, username, label FROM comments WHERE label IS NOT NULL');
+  const stmt = db.prepare('SELECT text, username, label, post_text FROM comments WHERE label IS NOT NULL');
   const results = [];
   while (stmt.step()) results.push(stmt.getAsObject());
   stmt.free();
@@ -280,6 +294,76 @@ function getAllSettings() {
   return settings;
 }
 
+// ── Blocklist ──────────────────────────────────────────────
+
+function getBlocklist() {
+  const stmt = db.prepare('SELECT * FROM blocklist ORDER BY added_at DESC');
+  const results = [];
+  while (stmt.step()) results.push(stmt.getAsObject());
+  stmt.free();
+  return results;
+}
+
+function addToBlocklist(username) {
+  const u = username.replace(/^@/, '').trim();
+  if (!u) return false;
+  db.run('INSERT OR IGNORE INTO blocklist (username) VALUES (?)', [u]);
+  const added = db.getRowsModified() > 0;
+  save();
+  return added;
+}
+
+function removeFromBlocklist(username) {
+  db.run('DELETE FROM blocklist WHERE username = ?', [username]);
+  const removed = db.getRowsModified() > 0;
+  save();
+  return removed;
+}
+
+function clearBlocklist() {
+  db.run('DELETE FROM blocklist');
+  save();
+}
+
+function importBlocklist(usernames) {
+  let count = 0;
+  for (const raw of usernames) {
+    const u = raw.replace(/^@/, '').trim();
+    if (!u) continue;
+    db.run('INSERT OR IGNORE INTO blocklist (username) VALUES (?)', [u]);
+    if (db.getRowsModified() > 0) count++;
+  }
+  save();
+  return count;
+}
+
+function isInBlocklist(username) {
+  const stmt = db.prepare('SELECT id FROM blocklist WHERE username = ?');
+  stmt.bind([username]);
+  const exists = stmt.step();
+  stmt.free();
+  return exists;
+}
+
+function markBlockedInBlocklist(username) {
+  const u = username.replace(/^@/, '').trim();
+  if (!u) return;
+  // Insert if not exists, then mark as blocked
+  db.run('INSERT OR IGNORE INTO blocklist (username, is_blocked) VALUES (?, 1)', [u]);
+  db.run('UPDATE blocklist SET is_blocked = 1 WHERE username = ?', [u]);
+  save();
+}
+
+function markMultipleBlockedInBlocklist(usernames) {
+  for (const raw of usernames) {
+    const u = raw.replace(/^@/, '').trim();
+    if (!u) continue;
+    db.run('INSERT OR IGNORE INTO blocklist (username, is_blocked) VALUES (?, 1)', [u]);
+    db.run('UPDATE blocklist SET is_blocked = 1 WHERE username = ?', [u]);
+  }
+  save();
+}
+
 // ── Helpers ────────────────────────────────────────────────
 
 function lastInsertId() {
@@ -310,6 +394,14 @@ module.exports = {
   completeBlockSession,
   isUserBlocked,
   addBlockedUser,
+  getBlocklist,
+  addToBlocklist,
+  removeFromBlocklist,
+  clearBlocklist,
+  importBlocklist,
+  isInBlocklist,
+  markBlockedInBlocklist,
+  markMultipleBlockedInBlocklist,
   getSetting,
   setSetting,
   getAllSettings,

@@ -46,11 +46,23 @@ async function loadModel(modelPath) {
   }
 }
 
-async function predict(text) {
+/**
+ * Build the input text for the classifier.
+ * When post_text is available, concatenate with comment to assess relevance.
+ */
+function buildInput(text, postText) {
+  if (postText) {
+    return `[POST] ${postText} [COMMENT] ${text}`;
+  }
+  return text;
+}
+
+async function predict(text, postText) {
   if (!modelLoaded || !pipeline) {
     throw new Error('Model not loaded');
   }
-  const result = await pipeline(text);
+  const input = buildInput(text, postText);
+  const result = await pipeline(input);
   // result looks like: [{ label: 'LABEL_0', score: 0.95 }]
   // LABEL_1 = spam, LABEL_0 = not-spam
   const top = result[0];
@@ -59,14 +71,17 @@ async function predict(text) {
   return { spam, confidence };
 }
 
-async function predictBatch(texts) {
+async function predictBatch(items) {
   if (!modelLoaded || !pipeline) {
     throw new Error('Model not loaded');
   }
   const results = [];
-  for (const text of texts) {
+  for (const item of items) {
     try {
-      const r = await predict(text);
+      // item can be a string or {text, post_text} object
+      const text = typeof item === 'string' ? item : item.text;
+      const postText = typeof item === 'string' ? null : item.post_text;
+      const r = await predict(text, postText);
       results.push(r);
     } catch (e) {
       results.push({ spam: false, confidence: 0, error: e.message });

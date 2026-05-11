@@ -153,9 +153,6 @@ function waitForPageLoad(sessionId, timeout = 15000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Page load timeout')), timeout);
 
-    // Listen for Page.loadEventFired — note: CDP events arrive via the shared ws.on('message') handler.
-    // We need a way to intercept session-specific events. We'll use Runtime.evaluate polling instead.
-    // Actually, let's use a simpler approach: poll for document.readyState
     const check = async () => {
       try {
         const result = await evaluate(sessionId, 'document.readyState');
@@ -164,6 +161,32 @@ function waitForPageLoad(sessionId, timeout = 15000) {
           resolve();
         } else {
           setTimeout(check, 500);
+        }
+      } catch (e) {
+        clearTimeout(timer);
+        reject(e);
+      }
+    };
+    setTimeout(check, 1000);
+  });
+}
+
+// Wait for a CSS selector to match at least one element in the page.
+// Useful for SPAs where readyState completes before content renders (e.g. X.com / React).
+function waitForSelector(sessionId, selector, timeout = 30000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`waitForSelector timeout: "${selector}"`)), timeout);
+
+    const check = async () => {
+      try {
+        const result = await evaluate(sessionId,
+          `document.querySelectorAll('${selector.replace(/'/g, "\\'")}').length`
+        );
+        if (result > 0) {
+          clearTimeout(timer);
+          resolve();
+        } else {
+          setTimeout(check, 800);
         }
       } catch (e) {
         clearTimeout(timer);
@@ -224,6 +247,7 @@ module.exports = {
   detachFromTarget,
   navigatePage,
   waitForPageLoad,
+  waitForSelector,
   openNewTab,
   evaluate,
   clickElement,

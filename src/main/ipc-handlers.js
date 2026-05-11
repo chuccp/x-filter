@@ -308,9 +308,10 @@ function registerIpcHandlers() {
         return { success: true, scanned: 0, spam: 0, blocked: 0 };
       }
 
-      // 2. Run model prediction on all comments
-      const texts = comments.map(c => c.text);
-      const predictions = await modelManager.predictBatch(texts);
+      // 2. Run model prediction on all comments (pass post_text for relevance check)
+      const predictions = await modelManager.predictBatch(
+        comments.map(c => ({ text: c.text, post_text: c.post_text }))
+      );
       const spamComments = comments.filter((c, i) => predictions[i] && predictions[i].spam && predictions[i].confidence >= threshold);
 
       if (win) win.webContents.send('block:progress', { phase: 'predicting', total: comments.length, spam: spamComments.length });
@@ -326,6 +327,10 @@ function registerIpcHandlers() {
         users_blocked: result.blocked,
         errors: result.errors,
       });
+
+      // Auto-save blocked users to the blocklist
+      const blockedUsernames = spamComments.map(c => c.username);
+      db.markMultipleBlockedInBlocklist(blockedUsernames);
 
       return { success: true, scanned: comments.length, spam: spamComments.length, blocked: result.blocked, errors: result.errors };
     } catch (e) {
@@ -360,6 +365,10 @@ function registerIpcHandlers() {
         errors: result.errors,
       });
 
+      // Auto-save blocked users to the blocklist
+      const blockedUsernames = comments.map(c => c.username);
+      db.markMultipleBlockedInBlocklist(blockedUsernames);
+
       return { success: true, scanned: comments.length, blocked: result.blocked, errors: result.errors };
     } catch (e) {
       return { success: false, error: e.message };
@@ -370,6 +379,162 @@ function registerIpcHandlers() {
     blocker.cancel();
     scraper.cancel();
     return { success: true };
+  });
+
+  // ── Blocklist ───────────────────────────────────────────────
+  ipcMain.handle('blocklist:get', async () => {
+    try {
+      return { success: true, entries: db.getBlocklist() };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:add', async (event, username) => {
+    try {
+      const added = db.addToBlocklist(username);
+      return { success: true, added, count: db.getBlocklist().length };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:remove', async (event, username) => {
+    try {
+      db.removeFromBlocklist(username);
+      return { success: true, count: db.getBlocklist().length };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:clear', async () => {
+    try {
+      db.clearBlocklist();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:import', async (event, text) => {
+    try {
+      const usernames = text.split(/[\n,]+/).filter(Boolean);
+      const count = db.importBlocklist(usernames);
+      return { success: true, count, total: db.getBlocklist().length };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:import-file', async (event) => {
+    try {
+      const { dialog } = require('electron');
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const result = await dialog.showOpenDialog(win, {
+        title: '导入拉黑名单',
+        filters: [
+          { name: '文本文件', extensions: ['txt', 'csv'] },
+          { name: '所有文件', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, error: 'cancelled' };
+      }
+      const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+      const usernames = content.split(/[\n,]+/).filter(Boolean);
+      const count = db.importBlocklist(usernames);
+      return { success: true, count, total: db.getBlocklist().length };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:export', async () => {
+    try {
+      const entries = db.getBlocklist();
+      const text = entries.map(e => e.username).join('\n');
+      return { success: true, text };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:export-file', async (event) => {
+    try {
+      const { dialog } = require('electron');
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const result = await dialog.showSaveDialog(win, {
+        title: '导出拉黑名单',
+        defaultPath: 'blocklist.txt',
+        filters: [
+          { name: '文本文件', extensions: ['txt'] },
+          { name: '所有文件', extensions: ['*'] },
+        ],
+      });
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'cancelled' };
+      }
+      const entries = db.getBlocklist();
+      const text = entries.map(e => e.username).join('\n');
+      fs.writeFileSync(result.filePath, text);
+      return { success: true, path: result.filePath };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('blocklist:block', async (event, url) => {
+    try {
+      const entries = db.getBlocklist();
+      if (entries.length === 0) {
+        return { success: false, error: '拉黑名单为空，请先添加用户名' };
+      }
+      const blocklist = entries.map(e => e.username);
+      const sessionId = db.createBlockSession(url);
+      const win = BrowserWindow.fromWebContents(event.sender);
+
+      // Scrape comments from the URL
+      const { comments } = await scraper.scrapeComments(url, (progress) => {
+        if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress });
+      });
+
+      if (comments.length === 0) {
+        db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
+        return { success: true, scanned: 0, blocked: 0 };
+      }
+
+      // Filter comments by blocklist
+      const matched = comments.filter(c => {
+        const u = (c.username || '').toLowerCase();
+        return blocklist.some(b => b.toLowerCase() === u);
+      });
+
+      if (matched.length === 0) {
+        db.completeBlockSession(sessionId, { comments_scanned: comments.length, spam_detected: 0, users_blocked: 0, errors: 0 });
+        return { success: true, scanned: comments.length, matched: 0, blocked: 0 };
+      }
+
+      // Auto-save matched users to blocklist as blocked
+      db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
+
+      // Block matched users
+      const result = await blocker.blockByList(url, matched, (progress) => {
+        if (win) win.webContents.send('block:progress', progress);
+      });
+
+      db.completeBlockSession(sessionId, {
+        comments_scanned: comments.length,
+        spam_detected: matched.length,
+        users_blocked: result.blocked,
+        errors: result.errors,
+      });
+
+      return { success: true, scanned: comments.length, matched: matched.length, blocked: result.blocked, errors: result.errors };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   });
 
   // ── Training Environment ────────────────────────────────────
@@ -447,8 +612,8 @@ function registerIpcHandlers() {
       const csvDir = path.join(app.getPath('userData'), 'training');
       fs.mkdirSync(csvDir, { recursive: true });
       const csvPath = path.join(csvDir, 'labeled.csv');
-      const header = 'text,label\n';
-      const csvRows = rows.map(r => `"${r.text.replace(/"/g, '""')}",${r.label}`).join('\n');
+      const header = 'text,post_text,label\n';
+      const csvRows = rows.map(r => `"${r.text.replace(/"/g, '""')}","${(r.post_text || '').replace(/"/g, '""')}",${r.label}`).join('\n');
       fs.writeFileSync(csvPath, header + csvRows);
 
       if (win) win.webContents.send('train:progress', { type: 'status', text: `Exported ${rows.length} labeled comments` });

@@ -4,6 +4,9 @@ Train a BERT spam classifier for x-filter.
 Usage:
     python train.py --csv data/labeled.csv --output data/models/x-spam-classifier
 
+    CSV format: text,post_text,label
+    post_text is optional — when present, it's concatenated as [POST] <post> [COMMENT] <comment>
+
 Progress lines (for Electron UI parsing):
     [STATUS] <message>
     [PROGRESS] {"epoch": 1, "total": 5, "loss": 0.42}
@@ -65,14 +68,24 @@ def parse_args():
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--batch-size", type=int, default=16)
     p.add_argument("--lr", type=float, default=2e-5)
-    p.add_argument("--max-len", type=int, default=128)
+    p.add_argument("--max-len", type=int, default=256, help="Max token length (increased for post+comment concatenation)")
     p.add_argument("--test-size", type=float, default=0.2)
     return p.parse_args()
 
 
 def load_data(csv_path):
     df = pd.read_csv(csv_path)
-    texts = df["text"].astype(str).tolist()
+    # Combine post_text and comment text for training
+    # Format: [POST] <post_text> [COMMENT] <comment_text>
+    # If post_text is missing/empty, use just the comment text
+    has_post = "post_text" in df.columns
+    texts = []
+    for _, row in df.iterrows():
+        comment = str(row["text"])
+        if has_post and pd.notna(row.get("post_text")) and str(row["post_text"]).strip():
+            texts.append(f"[POST] {str(row['post_text']).strip()} [COMMENT] {comment}")
+        else:
+            texts.append(comment)
     labels = df["label"].astype(int).tolist()
     return train_test_split(texts, labels, test_size=args.test_size, random_state=42, stratify=labels)
 

@@ -52,8 +52,8 @@ export default class AdminSettingsView {
     showStatus('settings-status', '正在导出...');
     const res = await apiInvoke('export:csv');
     if (res.success) {
-      const header = 'text,label\n';
-      const rows = res.rows.map(r => `"${r.text.replace(/"/g, '""')}",${r.label}`).join('\n');
+      const header = 'text,post_text,label\n';
+      const rows = res.rows.map(r => `"${r.text.replace(/"/g, '""')}","${(r.post_text || '').replace(/"/g, '""')}",${r.label}`).join('\n');
       const { clipboard } = require('electron');
       clipboard.writeText(header + rows);
       showStatus('settings-status', `已复制 ${res.rows.length} 条评论到剪贴板`);

@@ -96,6 +96,29 @@ export default class AdminLabelView {
     document.getElementById('comment-username').textContent = '@' + c.username;
     document.getElementById('comment-text').textContent = c.text;
 
+    // Show original post text for context
+    const postEl = document.getElementById('post-text');
+    if (c.post_text) {
+      if (!postEl) {
+        const commentDisplay = document.querySelector('.comment-display');
+        const headerEl = document.querySelector('.comment-header');
+        const postDiv = el('div', {
+          id: 'post-text',
+          style: 'background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--text-muted);max-height:100px;overflow-y:auto'
+        });
+        const postLabel = el('div', { style: 'font-size:11px;color:var(--text-dim);margin-bottom:4px' }, '📌 原文');
+        const postText = el('div', {}, c.post_text);
+        postDiv.appendChild(postLabel);
+        postDiv.appendChild(postText);
+        headerEl.parentNode.insertBefore(postDiv, commentDisplay.querySelector('.comment-body'));
+      } else {
+        postEl.style.display = 'block';
+        postEl.querySelector('div:last-child').textContent = c.post_text;
+      }
+    } else if (postEl) {
+      postEl.style.display = 'none';
+    }
+
     document.getElementById('btn-prev').disabled = this.currentIndex <= 0;
     document.getElementById('btn-next').disabled = this.currentIndex >= this.comments.length - 1;
 

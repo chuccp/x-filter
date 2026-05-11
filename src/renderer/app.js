@@ -15,6 +15,7 @@ const viewMap = {
   export: 'admin-export',
   train: 'admin-train',
   block: 'user-block',
+  blocklist: 'user-blocklist',
   settings: 'admin-settings',
 };
 

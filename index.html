@@ -36,8 +36,8 @@
         <span class="nav-label">标注评论</span>
       </a>
       <a class="nav-item admin-only" data-view="export">
-        <span class="nav-icon">📤</span>
-        <span class="nav-label">导出数据</span>
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">训练数据</span>
       </a>
       <a class="nav-item admin-only" data-view="train">
         <span class="nav-icon">🧠</span>
@@ -51,6 +51,10 @@
       <a class="nav-item" data-view="block">
         <span class="nav-icon">🛡</span>
         <span class="nav-label">自动拉黑</span>
+      </a>
+      <a class="nav-item" data-view="blocklist">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">名单拉黑</span>
       </a>
       <a class="nav-item admin-only" data-view="settings">
         <span class="nav-icon">⚙</span>
@@ -207,33 +211,33 @@
       </div>
     </section>
 
-    <!-- View: Export -->
+    <!-- View: Training Data -->
     <section id="view-export" class="view">
       <div class="card">
         <div class="card-header">
-          <span class="card-icon">📤</span>
-          <h2>导出训练数据</h2>
+          <span class="card-icon">📋</span>
+          <h2>训练数据查看</h2>
+          <button class="btn btn-outline btn-sm" id="btn-refresh-data" style="margin-left:auto">🔄 刷新</button>
           <span class="step-badge">第 3 步</span>
         </div>
         <div class="card-body">
-          <p class="help-text">将标注好的数据导出，用 Python 脚本训练模型。</p>
+          <p class="help-text">查看已标注的训练数据。数据将自动用于模型训练。</p>
           <div class="stats-grid" id="export-stats"></div>
-          <button class="btn btn-primary" id="btn-export" style="margin-top:16px">导出 CSV</button>
-          <div class="status-line" id="export-status"></div>
-          <div id="export-result" style="margin-top:12px"></div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <span class="card-icon">🐍</span>
-          <h2>下一步：训练模型</h2>
+          <span class="card-icon">🔍</span>
+          <h2>数据列表</h2>
+          <div class="filter-bar" id="data-filters" style="margin-left:auto"></div>
         </div>
         <div class="card-body">
-          <p class="help-text">将导出的 CSV 保存为 <code>data/labeled.csv</code>，然后运行：</p>
-          <div class="code-block">
-            pip install transformers torch datasets optimum onnx scikit-learn pandas<br>
-            python train.py --csv data/labeled.csv
+          <div class="data-table-wrap" id="data-table-container">
+            <div class="empty-state" id="data-empty">还没有标注数据。先去「标注评论」吧！</div>
+          </div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-outline btn-sm" id="btn-copy-csv">复制 CSV 到剪贴板</button>
           </div>
         </div>
       </div>
@@ -282,6 +286,65 @@
         </div>
         <div class="card-body">
           <div id="block-log" class="log-container">点击「开始扫描并拉黑」后日志会出现在这里</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Blocklist -->
+    <section id="view-blocklist" class="view">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📋</span>
+          <h2>拉黑名单管理</h2>
+          <span class="blocklist-count" id="blocklist-count">0 人</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="form-group" style="flex:1;margin-bottom:0">
+              <input type="text" id="blocklist-input" placeholder="输入用户名（如 elonmusk）">
+            </div>
+            <button class="btn btn-sm" id="btn-blocklist-add">添加</button>
+          </div>
+          <div class="blocklist-entries" id="blocklist-entries">
+            <div class="empty-state">名单为空，请添加或导入用户名</div>
+          </div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-import">导入名单</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-export">导出名单</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-clear">清空名单</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🚫</span>
+          <h2>根据名单拉黑</h2>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>帖子链接</label>
+            <input type="text" id="blocklist-url" placeholder="https://x.com/用户名/status/123456">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-danger" id="btn-blocklist-block">开始扫描并拉黑</button>
+            <button class="btn btn-outline" id="btn-blocklist-cancel" style="display:none">取消</button>
+          </div>
+          <div class="progress-bar" id="blocklist-progress-area" style="display:none">
+            <div class="progress-fill" id="blocklist-bar"></div>
+            <span class="progress-text" id="blocklist-progress-text"></span>
+          </div>
+          <div class="status-line" id="blocklist-status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📜</span>
+          <h2>运行日志</h2>
+        </div>
+        <div class="card-body">
+          <div id="blocklist-log" class="log-container">点击「开始扫描并拉黑」后日志会出现在这里</div>
         </div>
       </div>
     </section>

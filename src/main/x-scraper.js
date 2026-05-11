@@ -27,10 +27,9 @@ async function scrapeWithSession(sessionId, url, onProgress) {
   const scrollDelay = parseInt(settings.scroll_delay) || 500;
 
   try {
-    // Navigate and wait
+    // Navigate and wait for React to render tweet articles
     await cdp.navigatePage(sessionId, url);
-    await sleep(3000); // Initial load
-    await cdp.waitForPageLoad(sessionId, 20000);
+    await cdp.waitForSelector(sessionId, 'article[data-testid="tweet"]', 30000);
 
     if (cancelFlag) return { comments: [], url };
 
@@ -48,6 +47,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
     // Scroll and collect
     const comments = [];
     const seenTexts = new Set();
+    let postText = '';
 
     for (let i = 0; i < maxScroll; i++) {
       if (cancelFlag) break;
@@ -57,11 +57,19 @@ async function scrapeWithSession(sessionId, url, onProgress) {
         (function() {
           const results = [];
           const articles = document.querySelectorAll('article[data-testid="tweet"]');
+          let isFirst = true;
           for (const article of articles) {
-            // Skip the main tweet (first article) — only collect replies
-            // Find tweet text
             const textEl = article.querySelector('[data-testid="tweetText"]');
             if (!textEl) continue;
+            const text = textEl.textContent.trim();
+
+            if (isFirst) {
+              // First article is the original post — capture its text and skip
+              results.push({ _isPost: true, text: text, username: '' });
+              isFirst = false;
+              continue;
+            }
+
             // Skip retweets/quotes — they have a socialContext
             const socialContext = article.querySelector('[data-testid="socialContext"]');
 
@@ -88,7 +96,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
             }
 
             results.push({
-              text: textEl.textContent.trim(),
+              text: text,
               username: username || 'unknown',
             });
           }
@@ -97,8 +105,14 @@ async function scrapeWithSession(sessionId, url, onProgress) {
       `);
 
       for (const c of batch) {
+        // Extract post text from the first article marker
+        if (c._isPost) {
+          if (!postText) postText = c.text;
+          continue;
+        }
         if (c.text && !seenTexts.has(c.text)) {
           seenTexts.add(c.text);
+          c.post_text = postText;
           comments.push(c);
         }
       }
