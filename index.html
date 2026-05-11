@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>x-filter — X 评论过滤器</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div id="app-layout">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="brand">
+      <span class="brand-icon">🛡</span>
+      <span class="brand-text">x-filter</span>
+      <span class="brand-sub">X 评论过滤器</span>
+    </div>
+
+    <div class="role-toggle">
+      <button class="role-btn active" data-role="admin">管理员</button>
+      <button class="role-btn" data-role="user">普通用户</button>
+    </div>
+
+    <nav id="nav-menu">
+      <a class="nav-item active" data-view="connect">
+        <span class="nav-icon">⚡</span>
+        <span class="nav-label">连接 Chrome</span>
+      </a>
+      <a class="nav-item admin-only" data-view="collect">
+        <span class="nav-icon">📥</span>
+        <span class="nav-label">采集评论</span>
+      </a>
+      <a class="nav-item admin-only" data-view="label">
+        <span class="nav-icon">🏷</span>
+        <span class="nav-label">标注评论</span>
+      </a>
+      <a class="nav-item admin-only" data-view="export">
+        <span class="nav-icon">📤</span>
+        <span class="nav-label">导出数据</span>
+      </a>
+      <a class="nav-item admin-only" data-view="train">
+        <span class="nav-icon">🧠</span>
+        <span class="nav-label">训练模型</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-divider"></div>
+
+    <nav>
+      <a class="nav-item" data-view="block">
+        <span class="nav-icon">🛡</span>
+        <span class="nav-label">自动拉黑</span>
+      </a>
+      <a class="nav-item admin-only" data-view="settings">
+        <span class="nav-icon">⚙</span>
+        <span class="nav-label">设置</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="status-dot" id="sidebar-status-dot"></span>
+      <span class="status-text" id="sidebar-status-text">未连接</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main id="main-content">
+    <!-- View: Connect -->
+    <section id="view-connect" class="view active">
+      <div class="hero-card admin-hero">
+        <h1>欢迎使用 x-filter</h1>
+        <p>三步搞定 X（Twitter）上的垃圾评论：采集 → 标注 → 自动拉黑</p>
+        <div class="hero-steps">
+          <div class="hero-step"><span class="step-num">1</span>采集评论</div>
+          <div class="hero-step-arrow">→</div>
+          <div class="hero-step"><span class="step-num">2</span>标注垃圾</div>
+          <div class="hero-step-arrow">→</div>
+          <div class="hero-step"><span class="step-num">3</span>训练模型</div>
+          <div class="hero-step-arrow">→</div>
+          <div class="hero-step"><span class="step-num">4</span>自动拉黑</div>
+        </div>
+      </div>
+      <div class="hero-card user-hero" style="display:none">
+        <h1>🛡 自动拉黑工具</h1>
+        <p>连接 Chrome，粘贴帖子链接，一键扫描并拉黑垃圾评论发送者</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">⚡</span>
+          <h2>连接 Chrome 浏览器</h2>
+        </div>
+        <div class="card-body">
+          <p class="help-text">请先在 Chrome 浏览器中开启远程调试，然后点击连接按钮。</p>
+          <div class="helper-steps">
+            <div class="helper-step"><span class="step-num">1</span> 打开 Chrome 浏览器</div>
+            <div class="helper-step"><span class="step-num">2</span> 地址栏输入 <code>chrome://inspect/#remote-debugging</code> 并回车</div>
+            <div class="helper-step"><span class="step-num">3</span> 打开 <strong>Allow remote debugging</strong> 开关</div>
+            <div class="helper-step"><span class="step-num">4</span> 确认下方显示 <code>127.0.0.1:9222</code> 后点连接</div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:3">
+              <label>地址</label>
+              <input type="text" id="host" value="127.0.0.1">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>端口</label>
+              <input type="number" id="port" value="9222">
+            </div>
+          </div>
+          <button class="btn" id="btn-connect">连接 Chrome</button>
+          <button class="btn btn-outline" id="btn-disconnect" style="display:none">断开连接</button>
+          <div class="status-line" id="conn-status"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Collect -->
+    <section id="view-collect" class="view">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📥</span>
+          <h2>采集 X 评论</h2>
+          <span class="step-badge">第 1 步</span>
+        </div>
+        <div class="card-body">
+          <p class="help-text">粘贴一条 X（Twitter）帖子的链接，采集下面的回复评论。</p>
+          <div class="form-group">
+            <label>帖子链接</label>
+            <input type="text" id="collect-url" placeholder="https://x.com/用户名/status/123456">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-scrape">开始采集</button>
+            <button class="btn btn-outline" id="btn-cancel-scrape" style="display:none">取消</button>
+          </div>
+          <div class="progress-bar" id="scrape-progress" style="display:none">
+            <div class="progress-fill" id="scrape-bar"></div>
+            <span class="progress-text" id="scrape-progress-text"></span>
+          </div>
+          <div class="status-line" id="scrape-status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📋</span>
+          <h2>采集记录</h2>
+        </div>
+        <div class="card-body">
+          <div id="scrape-history" class="empty-state">还没有采集过评论。输入链接开始采集吧！</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Label -->
+    <section id="view-label" class="view">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🏷</span>
+          <h2>标注评论</h2>
+          <span class="step-badge">第 2 步</span>
+        </div>
+        <div class="card-body">
+          <div class="filter-bar" id="label-filters"></div>
+          <div class="stats-bar" id="label-stats"></div>
+        </div>
+      </div>
+
+      <div class="card" id="label-card" style="display:none">
+        <div class="card-body">
+          <div class="comment-display">
+            <div class="comment-header">
+              <span class="comment-index" id="comment-index"></span>
+              <span class="comment-user" id="comment-username"></span>
+            </div>
+            <div class="comment-body" id="comment-text"></div>
+            <div class="comment-actions">
+              <button class="btn btn-danger" id="btn-spam">垃圾评论</button>
+              <button class="btn btn-success" id="btn-not-spam">正常评论</button>
+              <button class="btn btn-outline" id="btn-skip">跳过 →</button>
+            </div>
+            <div class="shortcut-hint">键盘快捷键：S = 垃圾 · N = 正常 · → = 跳过 · ← = 返回</div>
+          </div>
+          <div class="nav-buttons">
+            <button class="btn btn-sm" id="btn-prev">← 上一条</button>
+            <button class="btn btn-sm" id="btn-next">下一条 →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="label-empty">
+        <div class="card-body">
+          <div class="empty-state">还没有评论可以标注。先去「采集评论」吧！</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">⚡</span>
+          <h2>批量操作</h2>
+        </div>
+        <div class="card-body">
+          <button class="btn btn-danger btn-sm" id="btn-batch-spam">全部标为垃圾</button>
+          <button class="btn btn-success btn-sm" id="btn-batch-not-spam">全部标为正常</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Export -->
+    <section id="view-export" class="view">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📤</span>
+          <h2>导出训练数据</h2>
+          <span class="step-badge">第 3 步</span>
+        </div>
+        <div class="card-body">
+          <p class="help-text">将标注好的数据导出，用 Python 脚本训练模型。</p>
+          <div class="stats-grid" id="export-stats"></div>
+          <button class="btn btn-primary" id="btn-export" style="margin-top:16px">导出 CSV</button>
+          <div class="status-line" id="export-status"></div>
+          <div id="export-result" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🐍</span>
+          <h2>下一步：训练模型</h2>
+        </div>
+        <div class="card-body">
+          <p class="help-text">将导出的 CSV 保存为 <code>data/labeled.csv</code>，然后运行：</p>
+          <div class="code-block">
+            pip install transformers torch datasets optimum onnx scikit-learn pandas<br>
+            python train.py --csv data/labeled.csv
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Train -->
+    <section id="view-train" class="view"></section>
+
+    <!-- View: Block -->
+    <section id="view-block" class="view">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🛡</span>
+          <h2>自动识别并拉黑</h2>
+        </div>
+        <div class="card-body">
+          <div class="model-status" id="model-info">模型状态：检查中...</div>
+          <div class="form-group" style="margin-top:12px">
+            <label>帖子链接</label>
+            <input type="text" id="block-url" placeholder="https://x.com/用户名/status/123456">
+          </div>
+          <div class="form-group">
+            <label>垃圾判定阈值：<strong id="threshold-value">0.8</strong></label>
+            <input type="range" id="threshold-slider" min="0.5" max="0.95" step="0.05" value="0.8">
+            <div class="range-labels">
+              <span>宽松</span><span>严格</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-danger" id="btn-block-start">开始扫描并拉黑</button>
+            <button class="btn btn-outline" id="btn-block-cancel" style="display:none">取消</button>
+          </div>
+          <div class="progress-bar" id="block-progress-area" style="display:none">
+            <div class="progress-fill" id="block-bar"></div>
+            <span class="progress-text" id="block-progress-text"></span>
+          </div>
+          <div class="status-line" id="block-status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">📜</span>
+          <h2>运行日志</h2>
+        </div>
+        <div class="card-body">
+          <div id="block-log" class="log-container">点击「开始扫描并拉黑」后日志会出现在这里</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Settings -->
+    <section id="view-settings" class="view">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">⚙</span>
+          <h2>设置</h2>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>采集参数 — 最大滚动次数</label>
+            <input type="number" id="setting-max_scroll" value="50">
+          </div>
+          <div class="form-group">
+            <label>滚动间隔 (毫秒)</label>
+            <input type="number" id="setting-scroll_delay" value="500">
+          </div>
+          <div class="form-group">
+            <label>垃圾判定阈值</label>
+            <input type="range" id="setting-spam_threshold" min="0.5" max="0.95" step="0.05" value="0.8">
+            <span id="setting-spam_threshold-value" style="font-size:13px;color:#94a3b8">0.8</span>
+          </div>
+          <button class="btn btn-primary" id="btn-save-settings">保存设置</button>
+          <div class="status-line" id="settings-status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🧠</span>
+          <h2>模型信息</h2>
+        </div>
+        <div class="card-body">
+          <div id="settings-model">检查中...</div>
+          <button class="btn btn-outline btn-sm" id="btn-settings-export" style="margin-top:12px">导出标注数据到剪贴板</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module" src="/src/renderer/app.js"></script>
+</body>
+</html>
