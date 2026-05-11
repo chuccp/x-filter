@@ -9,6 +9,24 @@ const modelManager = require('./model-manager');
 const blocker = require('./x-blocker');
 
 function registerIpcHandlers() {
+  // ── Python resolver ──────────────────────────────────────────
+  async function getPythonCommand() {
+    const candidates = process.platform === 'win32'
+      ? ['py', 'python3', 'python']
+      : ['python3', 'python'];
+    for (const cmd of candidates) {
+      try {
+        const proc = spawn(cmd, ['--version'], { shell: true });
+        let ver = '';
+        proc.stdout.on('data', d => ver += d.toString());
+        proc.stderr.on('data', d => ver += d.toString());
+        const code = await new Promise(r => proc.on('close', r));
+        if (code === 0) return { cmd, version: ver.trim() };
+      } catch (e) { /* try next */ }
+    }
+    return null;
+  }
+
   // ── CDP Connection ──────────────────────────────────────────
   ipcMain.handle('cdp:connect', async (event, host, port) => {
     try {
@@ -231,26 +249,19 @@ function registerIpcHandlers() {
 
   // ── Training Environment ────────────────────────────────────
   ipcMain.handle('train:check-env', async () => {
-    const result = { python: false, packages: {} };
+    const result = { python: false, pythonCmd: null, packages: {} };
 
-    // Check Python
-    try {
-      const pyCheck = spawn('python', ['--version'], { shell: true });
-      let ver = '';
-      pyCheck.stdout.on('data', d => ver += d.toString());
-      pyCheck.stderr.on('data', d => ver += d.toString());
-      const code = await new Promise(r => pyCheck.on('close', r));
-      if (code === 0) {
-        result.python = true;
-        result.pythonVersion = ver.trim();
-      }
-    } catch (e) {
-      result.python = false;
+    // Check Python — try py, python3, python
+    const py = await getPythonCommand();
+    if (py) {
+      result.python = true;
+      result.pythonCmd = py.cmd;
+      result.pythonVersion = py.version;
     }
 
     // Check required packages
     if (result.python) {
-      const pkgCheck = spawn('python', ['-c',
+      const pkgCheck = spawn(py.cmd, ['-c',
         'import transformers, torch, datasets, sklearn, pandas; print("all ok")'
       ], { shell: true });
       let out = '';
@@ -267,8 +278,11 @@ function registerIpcHandlers() {
   ipcMain.handle('train:install-deps', async (event) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
-      const proc = spawn('pip', [
-        'install', 'transformers', 'torch', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'
+      const py = await getPythonCommand();
+      if (!py) return { success: false, error: 'Python not found' };
+
+      const proc = spawn(py.cmd, [
+        '-m', 'pip', 'install', 'transformers', 'torch', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'
       ], { shell: true });
 
       proc.stdout.on('data', d => {
@@ -293,18 +307,11 @@ function registerIpcHandlers() {
       const win = BrowserWindow.fromWebContents(event.sender);
 
       // Check python
-      const pyCheck = spawn('python', ['--version'], { shell: true });
-      let pyVersion = '';
-      pyCheck.stdout.on('data', d => pyVersion += d.toString());
-      pyCheck.stderr.on('data', d => pyVersion += d.toString());
-
-      await new Promise((resolve, reject) => {
-        pyCheck.on('close', code => {
-          if (code === 0) resolve();
-          else reject(new Error('Python not found. Please install Python 3.'));
-        });
-      });
-      if (win) win.webContents.send('train:progress', { type: 'status', text: 'Python found: ' + pyVersion.trim() });
+      const py = await getPythonCommand();
+      if (!py) {
+        return { success: false, error: 'Python not found. Please install Python 3 from python.org.' };
+      }
+      if (win) win.webContents.send('train:progress', { type: 'status', text: 'Python found: ' + py.version });
 
       // Export labeled data
       const rows = db.exportLabeledComments();
@@ -336,7 +343,7 @@ function registerIpcHandlers() {
       if (win) win.webContents.send('train:progress', { type: 'status', text: 'Starting training...' });
 
       // Spawn training
-      trainingProcess = spawn('python', [
+      trainingProcess = spawn(py.cmd, [
         trainScript,
         '--csv', csvPath,
         '--output', modelDir,
