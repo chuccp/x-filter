@@ -30,11 +30,19 @@ function registerIpcHandlers() {
   }
 
   async function getPythonCommand() {
-    // Only use project python/ directory — never system Python
+    // First, try project python/ directory
     if (fs.existsSync(pythonExe)) {
       try {
         const ver = await tryCommand(pythonExe);
         if (ver) return { cmd: pythonExe, version: ver, source: 'local' };
+      } catch (e) { /* fall through */ }
+    }
+
+    // On macOS/Linux, fall back to system python3
+    if (process.platform !== 'win32') {
+      try {
+        const ver = await tryCommand('python3');
+        if (ver) return { cmd: 'python3', version: ver, source: 'system' };
       } catch (e) { /* fall through */ }
     }
 
@@ -45,6 +53,10 @@ function registerIpcHandlers() {
   let downloadActive = false;
 
   ipcMain.handle('python:download', async (event) => {
+    // Windows only — macOS/Linux users must provide Python manually
+    if (process.platform !== 'win32') {
+      return { success: false, error: 'Download only supported on Windows. Please install Python manually.' };
+    }
     if (downloadActive) return { success: false, error: 'Download already in progress' };
     downloadActive = true;
     try {
@@ -52,25 +64,22 @@ function registerIpcHandlers() {
       const https = require('https');
 
       const PY_VERSION = '3.12.7';
-      const url = `https://www.python.org/ftp/python/${PY_VERSION}/python-${PY_VERSION}-embed-amd64.zip`;
-      const zipPath = path.join(pythonDir, 'python.zip');
+      const dlFile = `python-${PY_VERSION}-embed-amd64.zip`;
+      const url = `https://registry.npmmirror.com/-/binary/python/${PY_VERSION}/${dlFile}`;
+      const dlPath = path.join(pythonDir, dlFile);
 
       fs.mkdirSync(pythonDir, { recursive: true });
 
-      // Follow redirects, then download with single stream
-      const result = await downloadWithRedirect(https, url, zipPath, win, 0);
-
+      const result = await downloadWithRedirect(https, url, dlPath, win, 0);
       if (!result.ok) {
         return { success: false, error: `Download failed: HTTP ${result.status}` };
       }
 
-      // Extract
       if (win) win.webContents.send('python:download-progress', { phase: 'extract', text: '正在解压...' });
-      execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${pythonDir}' -Force"`, { stdio: 'ignore' });
-      fs.unlinkSync(zipPath);
+      execSync(`powershell -Command "Expand-Archive -Path '${dlPath}' -DestinationPath '${pythonDir}' -Force"`, { stdio: 'ignore' });
+      fs.unlinkSync(dlPath);
 
-      // Enable site-packages (pip support)
-      if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: '正在配置 pip...' });
+      // Enable site-packages on Windows embeddable Python
       const pthFile = path.join(pythonDir, `python${PY_VERSION.replace(/\./g, '')}._pth`);
       if (fs.existsSync(pthFile)) {
         let content = fs.readFileSync(pthFile, 'utf-8');
@@ -78,9 +87,9 @@ function registerIpcHandlers() {
         fs.writeFileSync(pthFile, content);
       }
 
-      // Install pip via ensurepip (bundled with Python, no network needed)
+      // Install pip via ensurepip
+      if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: '正在配置 pip...' });
       await runPython([pythonExe, '-m', 'ensurepip', '--default-pip'], pythonDir, win, 'ensurepip');
-      // Upgrade pip
       await runPython([pythonExe, '-m', 'pip', 'install', '--upgrade', 'pip'], pythonDir, win, 'pip upgrade');
 
       if (win) win.webContents.send('python:download-progress', { phase: 'done', text: 'Python 已就绪' });
@@ -579,7 +588,7 @@ function registerIpcHandlers() {
     if (result.python) {
       const pkgCheck = spawn(py.cmd, ['-c',
         'import transformers, torch, datasets, sklearn, pandas; print("all ok")'
-      ], { shell: true });
+      ]);
       let out = '';
       pkgCheck.stdout.on('data', d => out += d.toString());
       pkgCheck.stderr.on('data', d => out += d.toString());

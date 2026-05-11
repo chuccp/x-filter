@@ -99,11 +99,14 @@ export default class AdminTrainView {
   // ── Environment check ──────────────────────────────────────
 
   async checkEnv() {
-    document.getElementById('env-check').innerHTML = '<span style="color:var(--text-muted)">正在检查 Python 环境...</span>';
+    const envEl = document.getElementById('env-check');
+    envEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查 Python 环境...</span>';
     document.getElementById('env-actions').innerHTML = '';
 
     // Show working directory
     const pathsRes = await apiInvoke('app:paths');
+
+    envEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查依赖包...</span>';
 
     const res = await apiInvoke('train:check-env');
     if (!res.success) {
@@ -147,9 +150,10 @@ export default class AdminTrainView {
           <span>依赖包已就绪 (transformers, torch, datasets, etc.)</span>
         </div>`);
       } else {
+        const detail = env.packages.detail ? `<br><code style="font-size:11px;color:var(--text-muted)">${env.packages.detail}</code>` : '';
         items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--danger)">
           <span style="font-size:16px">✘</span>
-          <span>缺少 Python 依赖包</span>
+          <span>缺少 Python 依赖包${detail}</span>
         </div>`);
       }
     }
@@ -170,15 +174,21 @@ export default class AdminTrainView {
       actions.appendChild(hint);
     } else if (!env.python) {
       actions.innerHTML = '';
-      const btn = el('button', {
-        className: 'btn btn-primary',
-        id: 'btn-download-python',
-        onClick: () => this.downloadPython(),
-      }, '下载 Python 3.12（约 8MB）');
-      actions.appendChild(btn);
-      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' },
-        '将自动下载便携 Python 到项目目录，无需手动安装');
-      actions.appendChild(hint);
+      if (process.platform === 'win32') {
+        const btn = el('button', {
+          className: 'btn btn-primary',
+          id: 'btn-download-python',
+          onClick: () => this.downloadPython(),
+        }, '下载 Python 3.12');
+        actions.appendChild(btn);
+        const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' },
+          '将自动下载便携 Python 到项目目录，无需手动安装');
+        actions.appendChild(hint);
+      } else {
+        const hint = el('div', { style: 'font-size:13px;color:var(--text-dim);margin-top:6px' },
+          '当前系统暂不支持一键下载 Python，请手动将 Python 放到项目 python/ 目录后刷新页面');
+        actions.appendChild(hint);
+      }
     }
 
     this.envReady = env.python && env.packages.all;
@@ -202,7 +212,6 @@ export default class AdminTrainView {
     const res = await apiInvoke('train:install-deps');
 
     if (res.success) {
-      this.appendLog('安装完成！重新检查环境...', 'log-line success');
       await this.checkEnv();
     } else {
       this.appendLog('安装失败: ' + (res.error || '未知错误'), 'log-line');
