@@ -226,17 +226,17 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
         <div class="card-header">
           <span class="card-icon">🔍</span>
           <h2>数据列表</h2>
           <div class="filter-bar" id="data-filters" style="margin-left:auto"></div>
         </div>
-        <div class="card-body">
-          <div class="data-table-wrap" id="data-table-container">
+        <div class="card-body" style="padding:0;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+          <div class="data-table-wrap" style="flex:1;max-height:none;overflow-y:auto" id="data-table-container">
             <div class="empty-state" id="data-empty">还没有标注数据。先去「标注评论」吧！</div>
           </div>
-          <div class="btn-row" style="margin-top:12px">
+          <div class="btn-row" style="margin-top:12px;padding:0 16px 14px">
             <button class="btn btn-outline btn-sm" id="btn-copy-csv">复制 CSV 到剪贴板</button>
           </div>
         </div>
@@ -292,59 +292,93 @@
 
     <!-- View: Blocklist -->
     <section id="view-blocklist" class="view">
-      <div class="card">
+      <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
         <div class="card-header">
           <span class="card-icon">📋</span>
-          <h2>拉黑名单管理</h2>
+          <h2>拉黑名单</h2>
           <span class="blocklist-count" id="blocklist-count">0 人</span>
-        </div>
-        <div class="card-body">
-          <div class="form-row" style="margin-bottom:12px">
-            <div class="form-group" style="flex:1;margin-bottom:0">
-              <input type="text" id="blocklist-input" placeholder="输入用户名（如 elonmusk）">
-            </div>
+          <div class="btn-row" style="margin-left:auto">
             <button class="btn btn-sm" id="btn-blocklist-add">添加</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-import">导入</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-export">导出</button>
+            <button class="btn btn-sm btn-danger" id="btn-blocklist-block">开始拉黑</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-clear">清空</button>
           </div>
-          <div class="blocklist-entries" id="blocklist-entries">
-            <div class="empty-state">名单为空，请添加或导入用户名</div>
-          </div>
-          <div class="btn-row" style="margin-top:12px">
-            <button class="btn btn-sm btn-outline" id="btn-blocklist-import">导入名单</button>
-            <button class="btn btn-sm btn-outline" id="btn-blocklist-export">导出名单</button>
-            <button class="btn btn-sm btn-outline" id="btn-blocklist-clear">清空名单</button>
+        </div>
+        <div class="card-body" style="padding:0;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+          <div class="data-table-wrap" style="flex:1;max-height:none;overflow-y:auto" id="blocklist-table-container">
+            <div class="empty-state" id="blocklist-empty">名单为空，请添加或导入用户名</div>
           </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-icon">🚫</span>
-          <h2>根据名单拉黑</h2>
-        </div>
-        <div class="card-body">
-          <div class="form-group">
-            <label>帖子链接</label>
-            <input type="text" id="blocklist-url" placeholder="https://x.com/用户名/status/123456">
+      <!-- Blocklist Modals -->
+      <div class="modal-overlay" id="modal-add" style="display:none">
+        <div class="modal-box">
+          <div class="modal-header">
+            <h3>添加用户</h3>
+            <button class="modal-close" data-close="modal-add">&times;</button>
           </div>
-          <div class="btn-row">
-            <button class="btn btn-danger" id="btn-blocklist-block">开始扫描并拉黑</button>
-            <button class="btn btn-outline" id="btn-blocklist-cancel" style="display:none">取消</button>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>用户名</label>
+              <input type="text" id="modal-add-input" placeholder="输入用户名（如 elonmusk）">
+            </div>
           </div>
-          <div class="progress-bar" id="blocklist-progress-area" style="display:none">
-            <div class="progress-fill" id="blocklist-bar"></div>
-            <span class="progress-text" id="blocklist-progress-text"></span>
+          <div class="modal-footer">
+            <button class="btn btn-outline btn-sm" data-close="modal-add">取消</button>
+            <button class="btn btn-sm" id="modal-add-confirm">添加</button>
           </div>
-          <div class="status-line" id="blocklist-status"></div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-icon">📜</span>
-          <h2>运行日志</h2>
+      <div class="modal-overlay" id="modal-import" style="display:none">
+        <div class="modal-box">
+          <div class="modal-header">
+            <h3>导入名单</h3>
+            <button class="modal-close" data-close="modal-import">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="help-text">从文件导入，每行一个用户名，或用逗号分隔。</p>
+            <div class="btn-row">
+              <button class="btn btn-outline btn-sm" id="modal-import-file">选择文件...</button>
+              <span class="status-line" id="modal-import-path" style="margin-top:0"></span>
+            </div>
+            <div class="form-group" style="margin-top:12px">
+              <label>或粘贴到下方</label>
+              <textarea id="modal-import-text" rows="6" placeholder="每行一个用户名或用逗号分隔"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline btn-sm" data-close="modal-import">取消</button>
+            <button class="btn btn-sm" id="modal-import-confirm">导入</button>
+          </div>
         </div>
-        <div class="card-body">
-          <div id="blocklist-log" class="log-container">点击「开始扫描并拉黑」后日志会出现在这里</div>
+      </div>
+
+      <div class="modal-overlay" id="modal-block" style="display:none">
+        <div class="modal-box" style="max-width:520px">
+          <div class="modal-header">
+            <h3>根据名单拉黑</h3>
+            <button class="modal-close" data-close="modal-block">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>帖子链接</label>
+              <input type="text" id="modal-block-url" placeholder="https://x.com/用户名/status/123456">
+            </div>
+            <div class="progress-bar" id="modal-block-progress" style="display:none">
+              <div class="progress-fill" id="modal-block-bar"></div>
+              <span class="progress-text" id="modal-block-progress-text"></span>
+            </div>
+            <div class="log-container" id="modal-block-log" style="max-height:200px;display:none"></div>
+            <div class="status-line" id="modal-block-status"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline btn-sm" data-close="modal-block" id="modal-block-close-btn">关闭</button>
+            <button class="btn btn-outline btn-sm" id="modal-block-cancel-btn" style="display:none">取消</button>
+            <button class="btn btn-danger btn-sm" id="modal-block-start">开始拉黑</button>
+          </div>
         </div>
       </div>
     </section>

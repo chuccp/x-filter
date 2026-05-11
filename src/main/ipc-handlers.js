@@ -30,18 +30,7 @@ function registerIpcHandlers() {
   }
 
   async function getPythonCommand() {
-    // 1. Try system PATH
-    const candidates = process.platform === 'win32'
-      ? ['py', 'python3', 'python']
-      : ['python3', 'python'];
-    for (const cmd of candidates) {
-      try {
-        const ver = await tryCommand(cmd);
-        if (ver) return { cmd, version: ver, source: 'system' };
-      } catch (e) { /* try next */ }
-    }
-
-    // 2. Try project python/ directory
+    // Only use project python/ directory — never system Python
     if (fs.existsSync(pythonExe)) {
       try {
         const ver = await tryCommand(pythonExe);
@@ -53,7 +42,11 @@ function registerIpcHandlers() {
   }
 
   // ── Python download ───────────────────────────────────────────
+  let downloadActive = false;
+
   ipcMain.handle('python:download', async (event) => {
+    if (downloadActive) return { success: false, error: 'Download already in progress' };
+    downloadActive = true;
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const https = require('https');
@@ -64,18 +57,8 @@ function registerIpcHandlers() {
 
       fs.mkdirSync(pythonDir, { recursive: true });
 
-      // Download with progress
-      const result = await new Promise((resolve, reject) => {
-        https.get(url, (res) => {
-          if (res.statusCode === 302 || res.statusCode === 301) {
-            https.get(res.headers.location, (redirectRes) => {
-              resolve(downloadStream(redirectRes, zipPath, win));
-            }).on('error', reject);
-            return;
-          }
-          resolve(downloadStream(res, zipPath, win));
-        }).on('error', reject);
-      });
+      // Follow redirects, then download with single stream
+      const result = await downloadWithRedirect(https, url, zipPath, win, 0);
 
       if (!result.ok) {
         return { success: false, error: `Download failed: HTTP ${result.status}` };
@@ -105,8 +88,26 @@ function registerIpcHandlers() {
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
+    } finally {
+      downloadActive = false;
     }
   });
+
+  // Follow HTTP redirects up to 5 levels, then download with progress polling
+  function downloadWithRedirect(https, url, filePath, win, depth) {
+    if (depth > 5) return Promise.reject(new Error('Too many redirects'));
+    return new Promise((resolve, reject) => {
+      https.get(url, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          const redirectUrl = res.headers.location;
+          res.resume(); // drain the redirect response body
+          resolve(downloadWithRedirect(https, redirectUrl, filePath, win, depth + 1));
+        } else {
+          resolve(downloadStream(res, filePath, win));
+        }
+      }).on('error', reject);
+    });
+  }
 
   function runPython(args, cwd, win, label) {
     return new Promise((resolve, reject) => {
@@ -130,25 +131,50 @@ function registerIpcHandlers() {
 
   async function downloadStream(response, filePath, win) {
     const total = parseInt(response.headers['content-length'] || '0', 10);
-    let downloaded = 0;
     const file = fs.createWriteStream(filePath);
 
+    // Poll bytesWritten for progress — file.bytesWritten reflects all writes regardless of disk flush
+    let pollTimer = null;
+    let lastBytes = 0;
+    let lastTime = Date.now();
+    let finished = false;
+
+    if (win && total > 0) {
+      pollTimer = setInterval(() => {
+        const size = file.bytesWritten;
+        if (size === lastBytes) return;
+        const now = Date.now();
+        const elapsed = (now - lastTime) / 1000;
+        const delta = size - lastBytes;
+        const speed = elapsed > 0.1 ? delta / elapsed : 0;
+        lastBytes = size;
+        lastTime = now;
+        const pct = Math.min(100, Math.round((size / total) * 100));
+        win.webContents.send('python:download-progress', {
+          phase: 'download', downloaded: size, total,
+          pct, speed,
+        });
+      }, 300);
+    }
+
     return new Promise((resolve, reject) => {
-      response.on('data', chunk => {
-        downloaded += chunk.length;
-        file.write(chunk);
+      response.on('data', chunk => { file.write(chunk); });
+      response.on('end', () => {
+        finished = true;
+        file.end();
+        if (pollTimer) clearInterval(pollTimer);
         if (win && total > 0) {
           win.webContents.send('python:download-progress', {
-            phase: 'download', downloaded, total,
-            pct: Math.round((downloaded / total) * 100),
+            phase: 'download', downloaded: file.bytesWritten, total,
+            pct: 100, speed: 0,
           });
         }
-      });
-      response.on('end', () => {
-        file.end();
         resolve({ ok: response.statusCode === 200, status: response.statusCode });
       });
-      response.on('error', reject);
+      response.on('error', (e) => {
+        if (pollTimer) clearInterval(pollTimer);
+        reject(e);
+      });
     });
   }
 

@@ -62,19 +62,19 @@ export default class AdminTrainView {
     c.appendChild(this.modelCard);
 
     // Card 4: Log
-    this.logCard = el('div', { className: 'card', id: 'log-card', style: 'display:none' },
+    this.logCard = el('div', { className: 'card', id: 'log-card', style: 'display:none;flex:1;min-height:0;flex-direction:column' },
       el('div', { className: 'card-header' },
         el('span', { className: 'card-icon' }, '📜'),
         el('h2', {}, '输出日志'),
       ),
-      el('div', { className: 'card-body' },
+      el('div', { className: 'card-body', style: 'flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0' },
         el('div', { id: 'train-progress', style: 'display:none;margin-bottom:8px' },
           el('div', { className: 'progress-bar' },
             el('div', { className: 'progress-fill', id: 'train-bar', style: 'width:0%' }),
           ),
           el('span', { className: 'progress-text', id: 'train-progress-text' }),
         ),
-        el('div', { id: 'train-log', className: 'log-container', style: 'max-height:350px' }),
+        el('div', { id: 'train-log', className: 'log-container', style: 'flex:1;max-height:none;overflow-y:auto' }),
       ),
     );
     c.appendChild(this.logCard);
@@ -193,7 +193,7 @@ export default class AdminTrainView {
     const btn = document.getElementById('btn-install-deps');
     if (btn) { btn.disabled = true; btn.textContent = '正在安装...'; }
 
-    this.logCard.style.display = 'block';
+    this.logCard.style.display = 'flex';
     document.getElementById('train-log').innerHTML = '';
     document.getElementById('train-progress').style.display = 'none';
     this.appendLog('pip install transformers torch datasets optimum[onnxruntime] scikit-learn pandas', 'log-line');
@@ -217,12 +217,14 @@ export default class AdminTrainView {
     const btn = document.getElementById('btn-download-python');
     if (btn) { btn.disabled = true; btn.textContent = '正在下载...'; }
 
-    this.logCard.style.display = 'block';
+    this.logCard.style.display = 'flex';
     document.getElementById('train-log').innerHTML = '';
     document.getElementById('train-progress').style.display = 'block';
     document.getElementById('train-bar').style.width = '0%';
-    document.getElementById('train-progress-text').textContent = '正在下载 Python...';
+    document.getElementById('train-bar').style.background = 'var(--primary)';
+    document.getElementById('train-progress-text').textContent = '准备下载...';
     this.appendLog('正在从 python.org 下载便携 Python 3.12...', 'log-line');
+    this._lastDownloadPct = -1;
 
     const res = await apiInvoke('python:download');
 
@@ -238,10 +240,21 @@ export default class AdminTrainView {
 
   handleDownloadProgress(data) {
     if (data.phase === 'download') {
-      document.getElementById('train-bar').style.width = data.pct + '%';
+      const bar = document.getElementById('train-bar');
+      bar.style.width = data.pct + '%';
+      const downloaded = (data.downloaded / 1024 / 1024).toFixed(1);
+      const total = data.total > 0 ? (data.total / 1024 / 1024).toFixed(1) : '?';
+      const speed = data.speed > 0
+        ? data.speed > 1024 * 1024 ? `${(data.speed / 1024 / 1024).toFixed(1)} MB/s`
+        : `${(data.speed / 1024).toFixed(0)} KB/s`
+        : '';
       document.getElementById('train-progress-text').textContent =
-        `下载中... ${(data.downloaded / 1024 / 1024).toFixed(1)}MB / ${(data.total / 1024 / 1024).toFixed(1)}MB`;
-      this.appendLog(`下载中... ${data.pct}%`, 'log-line');
+        `${downloaded} / ${total} MB  ${speed}`;
+      // Only log at 25% milestones to avoid spam
+      if (this._lastDownloadPct < 0 || data.pct - this._lastDownloadPct >= 25) {
+        this._lastDownloadPct = data.pct;
+        this.appendLog(`下载中... ${data.pct}% (${downloaded}MB / ${total}MB)`, 'log-line');
+      }
     } else if (data.phase === 'extract') {
       document.getElementById('train-progress-text').textContent = '正在解压...';
       this.appendLog('正在解压...', 'log-line');
@@ -309,7 +322,7 @@ export default class AdminTrainView {
     document.getElementById('train-progress').style.display = 'block';
     document.getElementById('train-bar').style.width = '0%';
     document.getElementById('train-progress-text').textContent = '正在启动...';
-    this.logCard.style.display = 'block';
+    this.logCard.style.display = 'flex';
 
     const res = await apiInvoke('train:start');
     this.training = false;
