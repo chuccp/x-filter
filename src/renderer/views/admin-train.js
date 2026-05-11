@@ -91,6 +91,9 @@ export default class AdminTrainView {
     ipcRenderer.on('train:install-log', (event, text) => {
       this.appendLog(text, 'log-line');
     });
+    ipcRenderer.on('python:download-progress', (event, data) => {
+      this.handleDownloadProgress(data);
+    });
   }
 
   // ── Environment check ──────────────────────────────────────
@@ -151,7 +154,16 @@ export default class AdminTrainView {
       const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将运行: pip install transformers torch datasets optimum scikit-learn pandas');
       actions.appendChild(hint);
     } else if (!env.python) {
-      actions.innerHTML = '<span style="font-size:13px;color:var(--text-dim)">请安装 Python 3.9+ 后重启应用</span>';
+      actions.innerHTML = '';
+      const btn = el('button', {
+        className: 'btn btn-primary',
+        id: 'btn-download-python',
+        onClick: () => this.downloadPython(),
+      }, '下载 Python 3.12（约 8MB）');
+      actions.appendChild(btn);
+      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' },
+        '将自动下载便携 Python 到项目目录，无需手动安装');
+      actions.appendChild(hint);
     }
 
     this.envReady = env.python && env.packages.all;
@@ -184,6 +196,48 @@ export default class AdminTrainView {
     }
 
     this.installing = false;
+  }
+
+  async downloadPython() {
+    const btn = document.getElementById('btn-download-python');
+    if (btn) { btn.disabled = true; btn.textContent = '正在下载...'; }
+
+    this.logCard.style.display = 'block';
+    document.getElementById('train-log').innerHTML = '';
+    document.getElementById('train-progress').style.display = 'block';
+    document.getElementById('train-bar').style.width = '0%';
+    document.getElementById('train-progress-text').textContent = '正在下载 Python...';
+    this.appendLog('正在从 python.org 下载便携 Python 3.12...', 'log-line');
+
+    const res = await apiInvoke('python:download');
+
+    if (res.success) {
+      this.appendLog('Python 安装完成！', 'log-line success');
+      document.getElementById('train-progress').style.display = 'none';
+      await this.checkEnv();
+    } else {
+      this.appendLog('下载失败: ' + (res.error || '未知错误'), 'log-line');
+      if (btn) { btn.disabled = false; btn.textContent = '重试下载'; }
+    }
+  }
+
+  handleDownloadProgress(data) {
+    if (data.phase === 'download') {
+      document.getElementById('train-bar').style.width = data.pct + '%';
+      document.getElementById('train-progress-text').textContent =
+        `下载中... ${(data.downloaded / 1024 / 1024).toFixed(1)}MB / ${(data.total / 1024 / 1024).toFixed(1)}MB`;
+      this.appendLog(`下载中... ${data.pct}%`, 'log-line');
+    } else if (data.phase === 'extract') {
+      document.getElementById('train-progress-text').textContent = '正在解压...';
+      this.appendLog('正在解压...', 'log-line');
+    } else if (data.phase === 'setup') {
+      document.getElementById('train-progress-text').textContent = '正在配置 pip...';
+      this.appendLog('正在配置 pip...', 'log-line');
+    } else if (data.phase === 'done') {
+      document.getElementById('train-bar').style.width = '100%';
+      document.getElementById('train-progress-text').textContent = 'Python 已就绪';
+      this.appendLog('Python 已就绪', 'log-line success');
+    }
   }
 
   // ── Training ───────────────────────────────────────────────

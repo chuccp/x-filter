@@ -1,7 +1,7 @@
 const { ipcMain, BrowserWindow, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const cdp = require('./cdp-manager');
 const db = require('./database');
 const scraper = require('./x-scraper');
@@ -10,21 +10,142 @@ const blocker = require('./x-blocker');
 
 function registerIpcHandlers() {
   // ── Python resolver ──────────────────────────────────────────
+  const pythonDir = path.join(__dirname, '..', '..', 'python');
+  const pythonExe = process.platform === 'win32'
+    ? path.join(pythonDir, 'python.exe')
+    : path.join(pythonDir, 'bin', 'python3');
+
+  function tryCommand(cmd) {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(cmd, ['--version'], { shell: true });
+      let ver = '';
+      proc.stdout.on('data', d => ver += d.toString());
+      proc.stderr.on('data', d => ver += d.toString());
+      proc.on('close', code => {
+        if (code === 0) resolve(ver.trim());
+        else reject(new Error(`exit ${code}`));
+      });
+      proc.on('error', e => reject(e));
+    });
+  }
+
   async function getPythonCommand() {
+    // 1. Try system PATH
     const candidates = process.platform === 'win32'
       ? ['py', 'python3', 'python']
       : ['python3', 'python'];
     for (const cmd of candidates) {
       try {
-        const proc = spawn(cmd, ['--version'], { shell: true });
-        let ver = '';
-        proc.stdout.on('data', d => ver += d.toString());
-        proc.stderr.on('data', d => ver += d.toString());
-        const code = await new Promise(r => proc.on('close', r));
-        if (code === 0) return { cmd, version: ver.trim() };
+        const ver = await tryCommand(cmd);
+        if (ver) return { cmd, version: ver, source: 'system' };
       } catch (e) { /* try next */ }
     }
+
+    // 2. Try project python/ directory
+    if (fs.existsSync(pythonExe)) {
+      try {
+        const ver = await tryCommand(pythonExe);
+        if (ver) return { cmd: pythonExe, version: ver, source: 'local' };
+      } catch (e) { /* fall through */ }
+    }
+
     return null;
+  }
+
+  // ── Python download ───────────────────────────────────────────
+  ipcMain.handle('python:download', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const https = require('https');
+
+      const PY_VERSION = '3.12.7';
+      const url = `https://www.python.org/ftp/python/${PY_VERSION}/python-${PY_VERSION}-embed-amd64.zip`;
+      const zipPath = path.join(pythonDir, 'python.zip');
+
+      fs.mkdirSync(pythonDir, { recursive: true });
+
+      // Download with progress
+      const result = await new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+          if (res.statusCode === 302 || res.statusCode === 301) {
+            https.get(res.headers.location, (redirectRes) => {
+              resolve(downloadStream(redirectRes, zipPath, win));
+            }).on('error', reject);
+            return;
+          }
+          resolve(downloadStream(res, zipPath, win));
+        }).on('error', reject);
+      });
+
+      if (!result.ok) {
+        return { success: false, error: `Download failed: HTTP ${result.status}` };
+      }
+
+      // Extract
+      if (win) win.webContents.send('python:download-progress', { phase: 'extract', text: '正在解压...' });
+      execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${pythonDir}' -Force"`, { stdio: 'ignore' });
+      fs.unlinkSync(zipPath);
+
+      // Enable site-packages (pip support)
+      if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: '正在配置 pip...' });
+      const pthFile = path.join(pythonDir, `python${PY_VERSION.replace(/\./g, '')}._pth`);
+      if (fs.existsSync(pthFile)) {
+        let content = fs.readFileSync(pthFile, 'utf-8');
+        content = content.replace(/#import site/, 'import site');
+        fs.writeFileSync(pthFile, content);
+      }
+
+      // Install pip
+      const getPipUrl = 'https://bootstrap.pypa.io/get-pip.py';
+      const getPipPath = path.join(pythonDir, 'get-pip.py');
+      await new Promise((resolve, reject) => {
+        https.get(getPipUrl, (res) => {
+          const file = fs.createWriteStream(getPipPath);
+          res.pipe(file);
+          file.on('finish', () => { file.close(); resolve(); });
+        }).on('error', reject);
+      });
+
+      await new Promise((resolve, reject) => {
+        const proc = spawn(pythonExe, [getPipPath], { shell: true, cwd: pythonDir });
+        proc.on('close', code => {
+          if (code === 0) resolve();
+          else reject(new Error(`pip install failed with code ${code}`));
+        });
+        proc.on('error', reject);
+      });
+      try { fs.unlinkSync(getPipPath); } catch (e) { /* ignore */ }
+
+      if (win) win.webContents.send('python:download-progress', { phase: 'done', text: 'Python 已就绪' });
+
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  async function downloadStream(response, filePath, win) {
+    const total = parseInt(response.headers['content-length'] || '0', 10);
+    let downloaded = 0;
+    const file = fs.createWriteStream(filePath);
+
+    return new Promise((resolve, reject) => {
+      response.on('data', chunk => {
+        downloaded += chunk.length;
+        file.write(chunk);
+        if (win && total > 0) {
+          win.webContents.send('python:download-progress', {
+            phase: 'download', downloaded, total,
+            pct: Math.round((downloaded / total) * 100),
+          });
+        }
+      });
+      response.on('end', () => {
+        file.end();
+        resolve({ ok: response.statusCode === 200, status: response.statusCode });
+      });
+      response.on('error', reject);
+    });
   }
 
   // ── CDP Connection ──────────────────────────────────────────
