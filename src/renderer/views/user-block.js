@@ -11,6 +11,7 @@ export default class UserBlockView {
 
   bindEvents() {
     document.getElementById('btn-block-start').addEventListener('click', () => this.start());
+    document.getElementById('btn-block-all').addEventListener('click', () => this.blockAll());
     document.getElementById('btn-block-cancel').addEventListener('click', () => this.cancel());
     document.getElementById('threshold-slider').addEventListener('input', (e) => {
       document.getElementById('threshold-value').textContent = e.target.value;
@@ -46,6 +47,7 @@ export default class UserBlockView {
 
     this.blocking = true;
     document.getElementById('btn-block-start').style.display = 'none';
+    document.getElementById('btn-block-all').style.display = 'none';
     document.getElementById('btn-block-cancel').style.display = 'inline-flex';
     document.getElementById('block-log').innerHTML = '';
     document.getElementById('block-progress-area').style.display = 'block';
@@ -56,6 +58,7 @@ export default class UserBlockView {
 
     this.blocking = false;
     document.getElementById('btn-block-start').style.display = 'inline-flex';
+    document.getElementById('btn-block-all').style.display = 'inline-flex';
     document.getElementById('btn-block-cancel').style.display = 'none';
     document.getElementById('block-progress-area').style.display = 'none';
 
@@ -67,10 +70,42 @@ export default class UserBlockView {
     }
   }
 
+  async blockAll() {
+    const url = document.getElementById('block-url').value.trim();
+    if (!url || !url.includes('x.com')) {
+      showStatus('block-status', '请输入有效的 X.com 链接', false);
+      return;
+    }
+
+    this.blocking = true;
+    document.getElementById('btn-block-start').style.display = 'none';
+    document.getElementById('btn-block-all').style.display = 'none';
+    document.getElementById('btn-block-cancel').style.display = 'inline-flex';
+    document.getElementById('block-log').innerHTML = '';
+    document.getElementById('block-progress-area').style.display = 'block';
+    showStatus('block-status', '正在扫描并全部拉黑...');
+
+    const res = await apiInvoke('block:all', document.getElementById('block-url').value.trim());
+
+    this.blocking = false;
+    document.getElementById('btn-block-start').style.display = 'inline-flex';
+    document.getElementById('btn-block-all').style.display = 'inline-flex';
+    document.getElementById('btn-block-cancel').style.display = 'none';
+    document.getElementById('block-progress-area').style.display = 'none';
+
+    if (res.success) {
+      showStatus('block-status',
+        `完成！扫描 ${res.scanned} 条评论，拉黑 ${res.blocked} 个用户`);
+    } else {
+      showStatus('block-status', '失败：' + res.error, false);
+    }
+  }
+
   async cancel() {
     await apiInvoke('block:cancel');
     this.blocking = false;
     document.getElementById('btn-block-start').style.display = 'inline-flex';
+    document.getElementById('btn-block-all').style.display = 'inline-flex';
     document.getElementById('btn-block-cancel').style.display = 'none';
     document.getElementById('block-progress-area').style.display = 'none';
     showStatus('block-status', '已取消');

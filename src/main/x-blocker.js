@@ -6,6 +6,52 @@ function cancel() {
   cancelFlag = true;
 }
 
+async function blockAllUsers(sourceUrl, comments, onProgress) {
+  cancelFlag = false;
+
+  const targets = await cdp.getPageTargets();
+  if (targets.length === 0) {
+    throw new Error('No Chrome tabs open. Open X first.');
+  }
+
+  const sessionId = await cdp.attachToTarget(targets[0].targetId);
+  await cdp.navigatePage(sessionId, sourceUrl);
+  await sleep(3000);
+  await cdp.waitForPageLoad(sessionId, 15000);
+
+  let scanned = 0;
+  let blocked = 0;
+  let errors = 0;
+
+  for (let i = 0; i < comments.length; i++) {
+    if (cancelFlag) break;
+
+    const c = comments[i];
+    scanned++;
+
+    try {
+      if (onProgress) onProgress({ phase: 'blocking', scanned, blocked, errors, total: comments.length, username: c.username });
+
+      const { isUserBlocked } = require('./database');
+      if (isUserBlocked(c.username)) continue;
+
+      const result = await blockUserOnPage(sessionId, c.username);
+      if (result) {
+        blocked++;
+        if (onProgress) onProgress({ phase: 'blocked', scanned, blocked, errors, total: comments.length, username: c.username });
+      }
+    } catch (e) {
+      errors++;
+      if (onProgress) onProgress({ phase: 'error', scanned, blocked, errors, total: comments.length, error: e.message });
+    }
+
+    await sleep(2000);
+  }
+
+  await cdp.detachFromTarget(sessionId);
+  return { scanned, blocked, errors };
+}
+
 async function blockSpamUsers(sourceUrl, comments, onProgress) {
   cancelFlag = false;
 
@@ -118,4 +164,4 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-module.exports = { blockSpamUsers, cancel };
+module.exports = { blockAllUsers, blockSpamUsers, cancel };

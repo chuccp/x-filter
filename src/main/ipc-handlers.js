@@ -190,6 +190,39 @@ function registerIpcHandlers() {
     }
   });
 
+  ipcMain.handle('block:all', async (event, url) => {
+    try {
+      const sessionId = db.createBlockSession(url);
+      const win = BrowserWindow.fromWebContents(event.sender);
+
+      // Scrape comments from the URL
+      const { comments } = await scraper.scrapeComments(url, (progress) => {
+        if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress });
+      });
+
+      if (comments.length === 0) {
+        db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
+        return { success: true, scanned: 0, blocked: 0 };
+      }
+
+      // Block all users without model filtering
+      const result = await blocker.blockAllUsers(url, comments, (progress) => {
+        if (win) win.webContents.send('block:progress', progress);
+      });
+
+      db.completeBlockSession(sessionId, {
+        comments_scanned: comments.length,
+        spam_detected: comments.length,
+        users_blocked: result.blocked,
+        errors: result.errors,
+      });
+
+      return { success: true, scanned: comments.length, blocked: result.blocked, errors: result.errors };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
   ipcMain.handle('block:cancel', async () => {
     blocker.cancel();
     scraper.cancel();
