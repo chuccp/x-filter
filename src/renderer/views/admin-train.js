@@ -102,6 +102,9 @@ export default class AdminTrainView {
     document.getElementById('env-check').innerHTML = '<span style="color:var(--text-muted)">正在检查 Python 环境...</span>';
     document.getElementById('env-actions').innerHTML = '';
 
+    // Show working directory
+    const pathsRes = await apiInvoke('app:paths');
+
     const res = await apiInvoke('train:check-env');
     if (!res.success) {
       document.getElementById('env-check').innerHTML = '<span style="color:var(--danger)">环境检查失败</span>';
@@ -110,6 +113,18 @@ export default class AdminTrainView {
 
     const env = res.env;
     const items = [];
+
+    // Working directory
+    if (pathsRes) {
+      items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
+        <span>📁</span>
+        <span>工作目录: <code>${pathsRes.workDir}</code></span>
+      </div>`);
+      items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
+        <span>🐍</span>
+        <span>Python 目录: <code>${pathsRes.pythonDir}</code>${pathsRes.pythonReady ? ' <span style="color:var(--success)">(就绪)</span>' : ''}</span>
+      </div>`);
+    }
 
     // Python check
     if (env.python) {

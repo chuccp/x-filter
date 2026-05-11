@@ -95,26 +95,10 @@ function registerIpcHandlers() {
         fs.writeFileSync(pthFile, content);
       }
 
-      // Install pip
-      const getPipUrl = 'https://bootstrap.pypa.io/get-pip.py';
-      const getPipPath = path.join(pythonDir, 'get-pip.py');
-      await new Promise((resolve, reject) => {
-        https.get(getPipUrl, (res) => {
-          const file = fs.createWriteStream(getPipPath);
-          res.pipe(file);
-          file.on('finish', () => { file.close(); resolve(); });
-        }).on('error', reject);
-      });
-
-      await new Promise((resolve, reject) => {
-        const proc = spawn(pythonExe, [getPipPath], { shell: true, cwd: pythonDir });
-        proc.on('close', code => {
-          if (code === 0) resolve();
-          else reject(new Error(`pip install failed with code ${code}`));
-        });
-        proc.on('error', reject);
-      });
-      try { fs.unlinkSync(getPipPath); } catch (e) { /* ignore */ }
+      // Install pip via ensurepip (bundled with Python, no network needed)
+      await runPython([pythonExe, '-m', 'ensurepip', '--default-pip'], pythonDir, win, 'ensurepip');
+      // Upgrade pip
+      await runPython([pythonExe, '-m', 'pip', 'install', '--upgrade', 'pip'], pythonDir, win, 'pip upgrade');
 
       if (win) win.webContents.send('python:download-progress', { phase: 'done', text: 'Python 已就绪' });
 
@@ -123,6 +107,26 @@ function registerIpcHandlers() {
       return { success: false, error: e.message };
     }
   });
+
+  function runPython(args, cwd, win, label) {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(args[0], args.slice(1), { shell: true, cwd });
+      let out = '';
+      proc.stdout.on('data', d => {
+        out += d.toString();
+        if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: `[${label}] ${d.toString().trim()}` });
+      });
+      proc.stderr.on('data', d => {
+        out += d.toString();
+        if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: `[${label}] ${d.toString().trim()}` });
+      });
+      proc.on('close', code => {
+        if (code === 0) resolve(out.trim());
+        else reject(new Error(`${label} failed (exit ${code}): ${out.trim().slice(-200)}`));
+      });
+      proc.on('error', e => reject(e));
+    });
+  }
 
   async function downloadStream(response, filePath, win) {
     const total = parseInt(response.headers['content-length'] || '0', 10);
@@ -528,6 +532,17 @@ function registerIpcHandlers() {
       trainingProcess = null;
     }
     return { success: true };
+  });
+
+  // ── App info ─────────────────────────────────────────────────
+  ipcMain.handle('app:paths', async () => {
+    const workDir = path.join(__dirname, '..', '..');
+    return {
+      workDir,
+      pythonDir,
+      pythonExe,
+      pythonReady: fs.existsSync(pythonExe),
+    };
   });
 
   // ── Settings ────────────────────────────────────────────────
