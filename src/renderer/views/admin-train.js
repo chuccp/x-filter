@@ -91,9 +91,6 @@ export default class AdminTrainView {
     ipcRenderer.on('train:install-log', (event, text) => {
       this.appendLog(text, 'log-line');
     });
-    ipcRenderer.on('python:download-progress', (event, data) => {
-      this.handleDownloadProgress(data);
-    });
   }
 
   // ── Environment check ──────────────────────────────────────
@@ -122,10 +119,6 @@ export default class AdminTrainView {
       items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
         <span>📁</span>
         <span>工作目录: <code>${pathsRes.workDir}</code></span>
-      </div>`);
-      items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
-        <span>🐍</span>
-        <span>Python 目录: <code>${pathsRes.pythonDir}</code>${pathsRes.pythonReady ? ' <span style="color:var(--success)">(就绪)</span>' : ''}</span>
       </div>`);
     }
 
@@ -174,21 +167,9 @@ export default class AdminTrainView {
       actions.appendChild(hint);
     } else if (!env.python) {
       actions.innerHTML = '';
-      if (process.platform === 'win32') {
-        const btn = el('button', {
-          className: 'btn btn-primary',
-          id: 'btn-download-python',
-          onClick: () => this.downloadPython(),
-        }, '下载 Python 3.12');
-        actions.appendChild(btn);
-        const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' },
-          '将自动下载便携 Python 到项目目录，无需手动安装');
-        actions.appendChild(hint);
-      } else {
-        const hint = el('div', { style: 'font-size:13px;color:var(--text-dim);margin-top:6px' },
-          '当前系统暂不支持一键下载 Python，请手动将 Python 放到项目 python/ 目录后刷新页面');
-        actions.appendChild(hint);
-      }
+      const hint = el('div', { style: 'font-size:13px;color:var(--text-dim);margin-top:6px' },
+        '请安装 Python 3 并确保 python 命令可用，然后<a href="#" onclick="location.reload()">刷新页面</a>');
+      actions.appendChild(hint);
     }
 
     this.envReady = env.python && env.packages.all;
@@ -220,58 +201,6 @@ export default class AdminTrainView {
     }
 
     this.installing = false;
-  }
-
-  async downloadPython() {
-    const btn = document.getElementById('btn-download-python');
-    if (btn) { btn.disabled = true; btn.textContent = '正在下载...'; }
-
-    this.logCard.style.display = 'flex';
-    document.getElementById('train-log').innerHTML = '';
-    document.getElementById('train-progress').style.display = 'block';
-    document.getElementById('train-bar').style.width = '0%';
-    document.getElementById('train-bar').style.background = 'var(--primary)';
-    document.getElementById('train-progress-text').textContent = '准备下载...';
-    this.appendLog('正在从 python.org 下载便携 Python 3.12...', 'log-line');
-    this._lastDownloadPct = -1;
-
-    const res = await apiInvoke('python:download');
-
-    if (res.success) {
-      this.appendLog('Python 安装完成！', 'log-line success');
-      document.getElementById('train-progress').style.display = 'none';
-      await this.checkEnv();
-    } else {
-      this.appendLog('下载失败: ' + (res.error || '未知错误'), 'log-line');
-      if (btn) { btn.disabled = false; btn.textContent = '重试下载'; }
-    }
-  }
-
-  handleDownloadProgress(data) {
-    if (data.phase === 'download') {
-      const bar = document.getElementById('train-bar');
-      bar.style.width = data.pct + '%';
-      const downloaded = (data.downloaded / 1024 / 1024).toFixed(1);
-      const total = data.total > 0 ? (data.total / 1024 / 1024).toFixed(1) : '?';
-      const speed = data.speed > 0
-        ? data.speed > 1024 * 1024 ? `${(data.speed / 1024 / 1024).toFixed(1)} MB/s`
-        : `${(data.speed / 1024).toFixed(0)} KB/s`
-        : '';
-      document.getElementById('train-progress-text').textContent =
-        `${downloaded} / ${total} MB  ${speed}`;
-      // Only log at 25% milestones to avoid spam
-      if (this._lastDownloadPct < 0 || data.pct - this._lastDownloadPct >= 25) {
-        this._lastDownloadPct = data.pct;
-        this.appendLog(`下载中... ${data.pct}% (${downloaded}MB / ${total}MB)`, 'log-line');
-      }
-    } else if (data.phase === 'extract') {
-      document.getElementById('train-progress-text').textContent = data.text;
-      this.appendLog(data.text, 'log-line');
-    } else if (data.phase === 'done') {
-      document.getElementById('train-bar').style.width = '100%';
-      document.getElementById('train-progress-text').textContent = data.text;
-      this.appendLog(data.text, 'log-line success');
-    }
   }
 
   // ── Training ───────────────────────────────────────────────
