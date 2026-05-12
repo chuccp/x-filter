@@ -49,11 +49,8 @@ export default class AdminDataView {
     if (res.success) {
       const s = res.stats;
       const labeled = s.spam + s.not_spam;
-      document.getElementById('export-stats').innerHTML = `
-        <div class="stat-card"><span class="num">${s.spam}</span><span class="label">垃圾评论</span></div>
-        <div class="stat-card"><span class="num">${s.not_spam}</span><span class="label">正常评论</span></div>
-        <div class="stat-card"><span class="num">${labeled}</span><span class="label">已标注</span></div>
-        <div class="stat-card"><span class="num">${s.total}</span><span class="label">总计</span></div>`;
+      document.getElementById('export-stats').textContent =
+        `垃圾${s.spam} 正常${s.not_spam} 已标注${labeled} 总计${s.total}`;
     }
     await this.loadData();
   }

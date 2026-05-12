@@ -31,21 +31,16 @@ export default class AdminTrainView {
 
     // Card 2: Training (initially hidden until env is ready)
     this.trainingCard = el('div', { className: 'card', id: 'training-card', style: 'display:none' },
-      el('div', { className: 'card-header' },
+      el('div', { className: 'card-header', style: 'padding:4px 16px' },
         el('span', { className: 'card-icon' }, '🧠'),
         el('h2', {}, '训练模型'),
-      ),
-      el('div', { className: 'card-body' },
-        el('div', { id: 'train-data-stats', style: 'margin-bottom:16px' }),
-        el('div', { className: 'form-group' },
-          el('label', {}, '训练轮数'),
-          el('input', { type: 'number', id: 'train-epochs', value: '5', min: '1', max: '20', style: 'width:100px' }),
+        el('span', { id: 'train-data-stats', style: 'margin-left:12px;font-size:12px;color:var(--text-muted)' }),
+        el('div', { style: 'margin-left:auto;display:flex;align-items:center;gap:6px' },
+          el('label', { style: 'font-size:12px;color:var(--text-dim)' }, '轮数'),
+          el('input', { type: 'number', id: 'train-epochs', value: '5', min: '1', max: '20', style: 'width:56px;font-size:13px' }),
+          el('button', { className: 'btn btn-primary btn-sm', id: 'btn-train' }, '训练'),
+          el('button', { className: 'btn btn-outline btn-sm', id: 'btn-cancel-train', style: 'display:none' }, '取消'),
         ),
-        el('div', { className: 'btn-row' },
-          el('button', { className: 'btn btn-primary', id: 'btn-train' }, '开始训练'),
-          el('button', { className: 'btn btn-outline', id: 'btn-cancel-train', style: 'display:none' }, '取消'),
-        ),
-        el('div', { className: 'status-line', id: 'train-status' }),
       ),
     );
     c.appendChild(this.trainingCard);
@@ -167,7 +162,7 @@ export default class AdminTrainView {
         onClick: () => this.installDeps(),
       }, '一键安装依赖');
       actions.appendChild(btn);
-      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将运行: pip install transformers torch datasets optimum scikit-learn pandas');
+      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将运行: pip install -i https://pypi.tuna.tsinghua.edu.cn/simple transformers torch datasets optimum[onnxruntime] scikit-learn pandas');
       actions.appendChild(hint);
     }
 
@@ -209,22 +204,17 @@ export default class AdminTrainView {
     if (res.success) {
       const s = res.stats;
       const labeled = s.spam + s.not_spam;
-      document.getElementById('train-data-stats').innerHTML =
-        `<div class="stats-grid">` +
-        `<div class="stat-card"><span class="num">${s.spam}</span><span class="label">垃圾</span></div>` +
-        `<div class="stat-card"><span class="num">${s.not_spam}</span><span class="label">正常</span></div>` +
-        `<div class="stat-card"><span class="num">${labeled}</span><span class="label">已标注</span></div>` +
-        `<div class="stat-card"><span class="num">${s.unlabeled}</span><span class="label">待标注</span></div>` +
-        `</div>`;
+      document.getElementById('train-data-stats').textContent =
+        `垃圾${s.spam} 正常${s.not_spam} 已标注${labeled} 待标注${s.unlabeled}`;
 
       const btn = document.getElementById('btn-train');
       if (labeled < 10) {
         btn.disabled = true;
-        btn.textContent = `需要至少 10 条已标注数据（当前 ${labeled} 条）`;
+        btn.textContent = '数据不足';
         btn.style.opacity = '0.6';
       } else {
         btn.disabled = false;
-        btn.textContent = '开始训练';
+        btn.textContent = '训练';
         btn.style.opacity = '1';
       }
     }

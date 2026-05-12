@@ -133,34 +133,86 @@ function register() {
     return { success: true, env: result };
   });
 
+  function log(win, msg) {
+    if (win) win.webContents.send('train:install-log', msg);
+  }
+
+  function runPip(pyCmd, args, win) {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(pyCmd, ['-m', 'pip', ...args], { shell: false });
+      proc.stdout.on('data', d => log(win, d.toString()));
+      proc.stderr.on('data', d => log(win, d.toString()));
+      proc.on('close', code => code === 0 ? resolve() : reject(new Error(`exit ${code}`)));
+      proc.on('error', e => reject(e));
+    });
+  }
+
   ipcMain.handle('train:install-deps', async (event) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const py = await getPythonCommand();
       if (!py) return { success: false, error: 'Python not found' };
 
-      const cuda = checkCuda();
-      const torchPkg = cuda.available
-        ? [`--index-url`, `https://download.pytorch.org/whl/${cuda.cudaTag}`, `torch`]
-        : [`torch`];
+      // Upgrade pip first
+      log(win, '升级 pip...\n');
+      try { await runPip(py.cmd, ['install', '--upgrade', 'pip'], win); } catch (e) { /* non-fatal */ }
 
-      if (win && cuda.available) {
-        win.webContents.send('train:install-log', `检测到 CUDA ${cuda.version}，将安装 PyTorch ${cuda.cudaTag} 版本\n`);
+      const cuda = checkCuda();
+
+      // Install torch: CUDA version from pytorch.org, CPU version from mirror
+      if (cuda.available) {
+        log(win, `检测到 CUDA ${cuda.version}，安装 PyTorch ${cuda.cudaTag} 版本\n`);
+        await runPip(py.cmd, [
+          'install', 'torch',
+          '--index-url', `https://download.pytorch.org/whl/${cuda.cudaTag}`,
+          '--trusted-host', 'download.pytorch.org',
+        ], win);
       }
 
-      const proc = spawn(py.cmd, [
-        '-m', 'pip', 'install', ...torchPkg, 'transformers', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'
-      ], { shell: true });
+      const mirrors = [
+        { url: 'https://pypi.tuna.tsinghua.edu.cn/simple', host: 'pypi.tuna.tsinghua.edu.cn' },
+        { url: 'https://mirrors.aliyun.com/pypi/simple/', host: 'mirrors.aliyun.com' },
+        { url: 'https://pypi.mirrors.ustc.edu.cn/simple/', host: 'pypi.mirrors.ustc.edu.cn' },
+        { url: 'https://pypi.org/simple/', host: 'pypi.org' },
+      ];
 
-      proc.stdout.on('data', d => {
-        if (win) win.webContents.send('train:install-log', d.toString());
-      });
-      proc.stderr.on('data', d => {
-        if (win) win.webContents.send('train:install-log', d.toString());
-      });
+      // Debug: show pip config
+      log(win, '--- pip 配置 ---\n');
+      try { await runPip(py.cmd, ['config', 'list'], win); } catch (e) { log(win, 'pip config 失败\n'); }
+      log(win, '--- 开始安装 ---\n');
 
-      const code = await new Promise(r => proc.on('close', r));
-      return { success: code === 0, error: code !== 0 ? `pip exited with code ${code}` : null };
+      // Install each package individually so one failure doesn't block others
+      const pkgs = cuda.available
+        ? ['transformers', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas']
+        : ['transformers', 'torch', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'];
+
+      let failed = [];
+      for (const pkg of pkgs) {
+        log(win, `安装 ${pkg} ...`);
+        let ok = false;
+        for (const m of mirrors) {
+          try {
+            await runPip(py.cmd, [
+              'install', '-i', m.url, '--trusted-host', m.host, '--verbose', pkg
+            ], win);
+            log(win, `  ${pkg} 安装成功\n`);
+            ok = true;
+            break;
+          } catch (e) {
+            log(win, `  ${m.url} 失败: ${e.message}\n`);
+          }
+        }
+        if (!ok) {
+          log(win, `  ${pkg} 所有镜像均失败！\n`);
+          failed.push(pkg);
+        }
+      }
+
+      log(win, failed.length === 0 ? '全部安装完成！\n' : `以下包安装失败: ${failed.join(', ')}\n`);
+      return {
+        success: failed.length === 0,
+        error: failed.length > 0 ? `${failed.length} 个包安装失败: ${failed.join(', ')}` : null,
+      };
     } catch (e) {
       return { success: false, error: e.message };
     }
@@ -192,13 +244,27 @@ function register() {
 
       const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
 
-      let trainScript = path.join(__dirname, '..', '..', '..', 'train.py');
+      // Select train script by Python version: train-py312.py > train.py
+      const pyVerMatch = py.version.match(/(\d+)\.(\d+)/);
+      const pyVerSuffix = pyVerMatch ? `-py${pyVerMatch[1]}${pyVerMatch[2]}` : '';
+      const projectRoot = path.join(__dirname, '..', '..', '..');
+      let trainScript = null;
+      if (pyVerSuffix) {
+        trainScript = path.join(projectRoot, `train${pyVerSuffix}.py`);
+      }
+      if (!trainScript || !fs.existsSync(trainScript)) {
+        trainScript = path.join(projectRoot, 'train.py');
+      }
+      if (!fs.existsSync(trainScript)) {
+        trainScript = path.join(app.getAppPath(), pyVerSuffix ? `train${pyVerSuffix}.py` : 'train.py');
+      }
       if (!fs.existsSync(trainScript)) {
         trainScript = path.join(app.getAppPath(), 'train.py');
       }
       if (!fs.existsSync(trainScript)) {
-        return { success: false, error: 'train.py not found' };
+        return { success: false, error: `train${pyVerSuffix || ''}.py not found` };
       }
+      if (win) win.webContents.send('train:progress', { type: 'status', text: `Using script: ${path.basename(trainScript)}` });
 
       if (win) win.webContents.send('train:progress', { type: 'status', text: 'Starting training...' });
 

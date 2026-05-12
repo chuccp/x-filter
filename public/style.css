@@ -554,10 +554,10 @@ input[type="range"] {
 .data-table tr:hover td {
   background: var(--bg-hover);
 }
-.data-table .col-text { max-width: 300px; }
-.data-table .col-post { max-width: 200px; color: var(--text-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
-.data-table .col-label { width: 60px; text-align: center; }
-.data-table .col-user { width: 100px; color: var(--text-dim); }
+.data-table .col-text { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.data-table .col-post { max-width: 160px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.data-table .col-label { width: 48px; text-align: center; }
+.data-table .col-user { width: 80px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .data-table .tag-spam {
   display: inline-block;
   padding: 2px 8px;
