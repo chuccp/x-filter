@@ -265,15 +265,12 @@ export default class AdminTrainView {
         this.appendLog(`下载中... ${data.pct}% (${downloaded}MB / ${total}MB)`, 'log-line');
       }
     } else if (data.phase === 'extract') {
-      document.getElementById('train-progress-text').textContent = '正在解压...';
-      this.appendLog('正在解压...', 'log-line');
-    } else if (data.phase === 'setup') {
-      document.getElementById('train-progress-text').textContent = '正在配置 pip...';
-      this.appendLog('正在配置 pip...', 'log-line');
+      document.getElementById('train-progress-text').textContent = data.text;
+      this.appendLog(data.text, 'log-line');
     } else if (data.phase === 'done') {
       document.getElementById('train-bar').style.width = '100%';
-      document.getElementById('train-progress-text').textContent = 'Python 已就绪';
-      this.appendLog('Python 已就绪', 'log-line success');
+      document.getElementById('train-progress-text').textContent = data.text;
+      this.appendLog(data.text, 'log-line success');
     }
   }
 

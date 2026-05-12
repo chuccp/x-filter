@@ -37,6 +37,7 @@ export default class AdminLabelView {
     document.getElementById('btn-next').addEventListener('click', () => this.next());
     document.getElementById('btn-batch-spam').addEventListener('click', () => this.batchLabel(1));
     document.getElementById('btn-batch-not-spam').addEventListener('click', () => this.batchLabel(0));
+    document.getElementById('btn-refresh-labels').addEventListener('click', () => this.loadComments());
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {

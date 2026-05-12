@@ -9,7 +9,9 @@ let dbPath = null;
 async function initDatabase() {
   const initSqlJs = require('sql.js');
   const SQL = await initSqlJs();
-  dbPath = path.join(app.getPath('userData'), 'x-filter.db');
+  const dataDir = path.join(__dirname, '..', '..', 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+  dbPath = path.join(dataDir, 'x-filter.db');
 
   // Load existing DB or create new
   if (fs.existsSync(dbPath)) {

@@ -64,7 +64,7 @@ function registerIpcHandlers() {
       const https = require('https');
 
       const PY_VERSION = '3.12.7';
-      const dlFile = `python-${PY_VERSION}-embed-amd64.zip`;
+      const dlFile = `python-${PY_VERSION}-amd64.exe`;
       const url = `https://registry.npmmirror.com/-/binary/python/${PY_VERSION}/${dlFile}`;
       const dlPath = path.join(pythonDir, dlFile);
 
@@ -75,22 +75,14 @@ function registerIpcHandlers() {
         return { success: false, error: `Download failed: HTTP ${result.status}` };
       }
 
-      if (win) win.webContents.send('python:download-progress', { phase: 'extract', text: '正在解压...' });
-      execSync(`powershell -Command "Expand-Archive -Path '${dlPath}' -DestinationPath '${pythonDir}' -Force"`, { stdio: 'ignore' });
+      if (win) win.webContents.send('python:download-progress', { phase: 'extract', text: '正在安装...' });
+      // Silent install to project dir: /quiet = no UI, TargetDir = portable path, InstallAllUsers=0 = no admin needed
+      execSync(`"${dlPath}" /quiet InstallAllUsers=0 TargetDir="${pythonDir}" PrependPath=0 Include_launcher=0 Include_test=0`, { stdio: 'ignore' });
       fs.unlinkSync(dlPath);
 
-      // Enable site-packages on Windows embeddable Python
-      const pthFile = path.join(pythonDir, `python${PY_VERSION.replace(/\./g, '')}._pth`);
-      if (fs.existsSync(pthFile)) {
-        let content = fs.readFileSync(pthFile, 'utf-8');
-        content = content.replace(/#import site/, 'import site');
-        fs.writeFileSync(pthFile, content);
+      if (!fs.existsSync(pythonExe)) {
+        return { success: false, error: 'Installation failed: python.exe not found after install' };
       }
-
-      // Install pip via ensurepip
-      if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: '正在配置 pip...' });
-      await runPython([pythonExe, '-m', 'ensurepip', '--default-pip'], pythonDir, win, 'ensurepip');
-      await runPython([pythonExe, '-m', 'pip', 'install', '--upgrade', 'pip'], pythonDir, win, 'pip upgrade');
 
       if (win) win.webContents.send('python:download-progress', { phase: 'done', text: 'Python 已就绪' });
 
@@ -115,26 +107,6 @@ function registerIpcHandlers() {
           resolve(downloadStream(res, filePath, win));
         }
       }).on('error', reject);
-    });
-  }
-
-  function runPython(args, cwd, win, label) {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(args[0], args.slice(1), { shell: true, cwd });
-      let out = '';
-      proc.stdout.on('data', d => {
-        out += d.toString();
-        if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: `[${label}] ${d.toString().trim()}` });
-      });
-      proc.stderr.on('data', d => {
-        out += d.toString();
-        if (win) win.webContents.send('python:download-progress', { phase: 'setup', text: `[${label}] ${d.toString().trim()}` });
-      });
-      proc.on('close', code => {
-        if (code === 0) resolve(out.trim());
-        else reject(new Error(`${label} failed (exit ${code}): ${out.trim().slice(-200)}`));
-      });
-      proc.on('error', e => reject(e));
     });
   }
 
@@ -644,7 +616,7 @@ function registerIpcHandlers() {
         return { success: false, error: `Need at least 10 labeled comments, got ${rows.length}` };
       }
 
-      const csvDir = path.join(app.getPath('userData'), 'training');
+      const csvDir = path.join(__dirname, '..', '..', 'data');
       fs.mkdirSync(csvDir, { recursive: true });
       const csvPath = path.join(csvDir, 'labeled.csv');
       const header = 'text,post_text,label\n';
