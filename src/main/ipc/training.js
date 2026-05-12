@@ -275,7 +275,6 @@ function register() {
         '--epochs', '5',
       ], {
         cwd: path.dirname(trainScript),
-        shell: true,
       });
 
       trainingProcess.stdout.on('data', (data) => {

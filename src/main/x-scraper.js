@@ -48,6 +48,8 @@ async function scrapeWithSession(sessionId, url, onProgress) {
     const comments = [];
     const seenTexts = new Set();
     let postText = '';
+    let noNewCount = 0;
+    const maxNoNew = 3; // Stop after 3 consecutive scrolls with no new comments
 
     for (let i = 0; i < maxScroll; i++) {
       if (cancelFlag) break;
@@ -55,13 +57,26 @@ async function scrapeWithSession(sessionId, url, onProgress) {
       // Extract comments currently visible
       const batch = await cdp.evaluate(sessionId, `
         (function() {
+          function getTextWithEmojis(el) {
+            let result = '';
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+            while (walker.nextNode()) {
+              const node = walker.currentNode;
+              if (node.nodeType === Node.TEXT_NODE) {
+                result += node.textContent;
+              } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'IMG' && node.alt) {
+                result += node.alt;
+              }
+            }
+            return result.trim();
+          }
           const results = [];
           const articles = document.querySelectorAll('article[data-testid="tweet"]');
           let isFirst = true;
           for (const article of articles) {
             const textEl = article.querySelector('[data-testid="tweetText"]');
             if (!textEl) continue;
-            const text = textEl.textContent.trim();
+            const text = getTextWithEmojis(textEl);
 
             if (isFirst) {
               // First article is the original post — capture its text and skip
@@ -104,6 +119,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
         })()
       `);
 
+      let newInBatch = 0;
       for (const c of batch) {
         // Extract post text from the first article marker
         if (c._isPost) {
@@ -114,7 +130,15 @@ async function scrapeWithSession(sessionId, url, onProgress) {
           seenTexts.add(c.text);
           c.post_text = postText;
           comments.push(c);
+          newInBatch++;
         }
+      }
+
+      if (newInBatch === 0) {
+        noNewCount++;
+        if (noNewCount >= maxNoNew) break; // No new comments after several scrolls, stop
+      } else {
+        noNewCount = 0;
       }
 
       if (onProgress) onProgress({ found: comments.length, scroll: i + 1, total: maxScroll });
