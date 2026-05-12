@@ -1,38 +1,115 @@
 const { ipcMain, BrowserWindow, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const db = require('../database');
 const modelManager = require('../model-manager');
 
 let trainingProcess = null;
 
-function tryCommand(cmd) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, ['--version'], { shell: true });
-    let ver = '';
-    proc.stdout.on('data', d => ver += d.toString());
-    proc.stderr.on('data', d => ver += d.toString());
-    proc.on('close', code => {
-      if (code === 0) resolve(ver.trim());
-      else reject(new Error(`exit ${code}`));
-    });
-    proc.on('error', e => reject(e));
-  });
+// Use execSync to reliably resolve PATH through cmd.exe
+function tryExec(cmd) {
+  try {
+    return execSync(`"${cmd}" --version`, { encoding: 'utf-8', shell: true, stdio: 'pipe' }).trim();
+  } catch (e) {
+    return null;
+  }
+}
+
+function findPythonInPaths(paths) {
+  for (const p of paths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function getPythonFromWhere() {
+  // Use cmd.exe's "where" to locate python in PATH
+  try {
+    const paths = ['python', 'python3', 'py'];
+    for (const name of paths) {
+      const result = execSync(`where ${name} 2>nul`, { encoding: 'utf-8', shell: true, stdio: 'pipe' }).trim();
+      if (result) {
+        const firstLine = result.split('\n')[0].trim();
+        if (fs.existsSync(firstLine)) return firstLine;
+      }
+    }
+  } catch (e) { /* not found */ }
+  return null;
 }
 
 async function getPythonCommand() {
-  const cmd = process.platform === 'win32' ? 'python' : 'python3';
-  try {
-    const ver = await tryCommand(cmd);
+  // 1. Use cmd.exe "where" to locate python (most reliable PATH resolution)
+  let cmd = getPythonFromWhere();
+  if (cmd) {
+    const ver = tryExec(cmd);
     if (ver) return { cmd, version: ver, source: 'system' };
-  } catch (e) { /* fall through */ }
+  }
+
+  // 2. Try commands via execSync (shell PATH)
+  if (process.platform === 'win32') {
+    const names = ['python', 'python3', 'py'];
+    for (const name of names) {
+      const ver = tryExec(name);
+      if (ver) return { cmd: name, version: ver, source: 'system' };
+    }
+  } else {
+    for (const name of ['python3', 'python']) {
+      const ver = tryExec(name);
+      if (ver) return { cmd: name, version: ver, source: 'system' };
+    }
+  }
+
+  // 3. Fallback: scan common Windows install directories
+  if (process.platform === 'win32') {
+    const home = process.env.USERPROFILE || '';
+    const versions = ['313', '312', '311', '310', '39', '38'];
+    const searchPaths = [];
+    for (const v of versions) {
+      searchPaths.push(
+        `C:\\Python${v}\\python.exe`,
+        `C:\\Program Files\\Python${v}\\python.exe`,
+        path.join(home, `AppData\\Local\\Programs\\Python\\Python${v}\\python.exe`),
+        path.join(home, `AppData\\Local\\Microsoft\\WindowsApps\\python.exe`),
+        path.join(home, `AppData\\Local\\Microsoft\\WindowsApps\\python3.exe`),
+      );
+    }
+    const found = findPythonInPaths(searchPaths);
+    if (found) {
+      const ver = tryExec(found);
+      if (ver) return { cmd: found, version: ver, source: 'detected' };
+    }
+  }
+
   return null;
+}
+
+function checkCuda() {
+  try {
+    const out = execSync('nvidia-smi', { encoding: 'utf-8', shell: true, stdio: 'pipe' });
+    // Parse CUDA version from line like "CUDA Version: 12.4"
+    const m = out.match(/CUDA Version:\s*(\d+\.\d+)/i);
+    if (m) {
+      const ver = m[1];
+      // Map CUDA version to PyTorch index: 12.x → cu124, 11.x → cu118
+      const major = parseInt(ver.split('.')[0], 10);
+      const minor = parseInt(ver.split('.')[1] || '0', 10);
+      let cudaTag;
+      if (major >= 12) cudaTag = minor >= 4 ? 'cu124' : 'cu121';
+      else if (major >= 11) cudaTag = 'cu118';
+      else return { available: false };
+      return { available: true, version: ver, cudaTag };
+    }
+  } catch (e) { /* nvidia-smi not found */ }
+  return { available: false };
 }
 
 function register() {
   ipcMain.handle('train:check-env', async () => {
-    const result = { python: false, pythonCmd: null, packages: {} };
+    const result = { python: false, pythonCmd: null, packages: {}, cuda: null };
+
+    // CUDA check (runs in parallel to Python check if possible, but sequential is fine)
+    result.cuda = checkCuda();
 
     const py = await getPythonCommand();
     if (py) {
@@ -62,8 +139,17 @@ function register() {
       const py = await getPythonCommand();
       if (!py) return { success: false, error: 'Python not found' };
 
+      const cuda = checkCuda();
+      const torchPkg = cuda.available
+        ? [`--index-url`, `https://download.pytorch.org/whl/${cuda.cudaTag}`, `torch`]
+        : [`torch`];
+
+      if (win && cuda.available) {
+        win.webContents.send('train:install-log', `检测到 CUDA ${cuda.version}，将安装 PyTorch ${cuda.cudaTag} 版本\n`);
+      }
+
       const proc = spawn(py.cmd, [
-        '-m', 'pip', 'install', 'transformers', 'torch', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'
+        '-m', 'pip', 'install', ...torchPkg, 'transformers', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'
       ], { shell: true });
 
       proc.stdout.on('data', d => {

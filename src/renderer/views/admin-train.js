@@ -21,6 +21,7 @@ export default class AdminTrainView {
       el('div', { className: 'card-header' },
         el('span', { className: 'card-icon' }, '🔧'),
         el('h2', {}, '环境检查'),
+        el('button', { className: 'btn btn-sm btn-outline', id: 'btn-recheck-env', onClick: () => this.checkEnv(), style: 'margin-left:auto' }, '🔄 重新检测'),
       ),
       el('div', { className: 'card-body' },
         el('div', { id: 'env-check', html: '<span style="color:var(--text-muted)">正在检查...</span>' }),
@@ -100,9 +101,6 @@ export default class AdminTrainView {
     envEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查 Python 环境...</span>';
     document.getElementById('env-actions').innerHTML = '';
 
-    // Show working directory
-    const pathsRes = await apiInvoke('app:paths');
-
     envEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查依赖包...</span>';
 
     const res = await apiInvoke('train:check-env');
@@ -114,14 +112,6 @@ export default class AdminTrainView {
     const env = res.env;
     const items = [];
 
-    // Working directory
-    if (pathsRes) {
-      items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
-        <span>📁</span>
-        <span>工作目录: <code>${pathsRes.workDir}</code></span>
-      </div>`);
-    }
-
     // Python check
     if (env.python) {
       items.push(`<div class="log-line success" style="display:flex;align-items:center;gap:8px">
@@ -131,7 +121,20 @@ export default class AdminTrainView {
     } else {
       items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--danger)">
         <span style="font-size:16px">✘</span>
-        <span>Python 未安装 — 请先安装 <code style="color:var(--text-dim)">python.org</code></span>
+        <span>Python 未安装 — 请先到 <a href="https://www.python.org/downloads/" target="_blank" style="color:var(--accent)">python.org</a> 下载安装（安装时勾选 "Add Python to PATH"），然后重新检测</span>
+      </div>`);
+    }
+
+    // CUDA check
+    if (env.cuda && env.cuda.available) {
+      items.push(`<div class="log-line success" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--success);font-size:16px">✔</span>
+        <span>CUDA ${env.cuda.version} 可用 <span style="color:var(--text-muted)">(PyTorch 将使用 ${env.cuda.cudaTag})</span></span>
+      </div>`);
+    } else {
+      items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--text-dim)">
+        <span style="font-size:16px">·</span>
+        <span>CUDA 未检测到 — 将安装 CPU 版 PyTorch</span>
       </div>`);
     }
 
@@ -155,8 +158,9 @@ export default class AdminTrainView {
 
     // Action buttons
     const actions = document.getElementById('env-actions');
+    actions.innerHTML = '';
+
     if (env.python && !env.packages.all) {
-      actions.innerHTML = '';
       const btn = el('button', {
         className: 'btn btn-primary',
         id: 'btn-install-deps',
@@ -164,11 +168,6 @@ export default class AdminTrainView {
       }, '一键安装依赖');
       actions.appendChild(btn);
       const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将运行: pip install transformers torch datasets optimum scikit-learn pandas');
-      actions.appendChild(hint);
-    } else if (!env.python) {
-      actions.innerHTML = '';
-      const hint = el('div', { style: 'font-size:13px;color:var(--text-dim);margin-top:6px' },
-        '请安装 Python 3 并确保 python 命令可用，然后<a href="#" onclick="location.reload()">刷新页面</a>');
       actions.appendChild(hint);
     }
 
