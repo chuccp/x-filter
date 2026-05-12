@@ -106,6 +106,8 @@ function checkCuda() {
 }
 
 function register() {
+  const projectRoot = path.join(__dirname, '..', '..', '..');
+
   ipcMain.handle('train:check-env', async () => {
     const result = { python: false, pythonCmd: null, packages: {}, cuda: null };
 
@@ -248,7 +250,7 @@ function register() {
       // Select train script by Python version: train-py312.py > train.py
       const pyVerMatch = py.version.match(/(\d+)\.(\d+)/);
       const pyVerSuffix = pyVerMatch ? `-py${pyVerMatch[1]}${pyVerMatch[2]}` : '';
-      const projectRoot = path.join(__dirname, '..', '..', '..');
+
       let trainScript = null;
       if (pyVerSuffix) {
         trainScript = path.join(projectRoot, `train${pyVerSuffix}.py`);
@@ -270,7 +272,7 @@ function register() {
       if (win) win.webContents.send('train:progress', { type: 'status', text: 'Starting training...' });
 
       // Check if pretrained model is available locally
-      const pretrainedDir = path.join(app.getPath('userData'), 'models', 'pretrained');
+      const pretrainedDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
       const hasPretrained = fs.existsSync(path.join(pretrainedDir, 'config.json'));
       const modelArg = hasPretrained ? pretrainedDir : 'bert-base-multilingual-cased';
 
@@ -342,37 +344,40 @@ function register() {
   // ── Pretrained model download ──────────────────────────────────
 
   ipcMain.handle('model:download-status', async () => {
-    const modelDir = path.join(app.getPath('userData'), 'models', 'pretrained');
+    const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
     const configPath = path.join(modelDir, 'config.json');
-    return { downloaded: fs.existsSync(configPath), path: modelDir };
+    const dirExists = fs.existsSync(modelDir);
+    const hasFiles = dirExists && fs.readdirSync(modelDir).length > 0;
+    return {
+      downloaded: fs.existsSync(configPath),
+      partial: hasFiles && !fs.existsSync(configPath),
+      path: modelDir,
+    };
   });
 
-  ipcMain.handle('model:download', async (event) => {
+  ipcMain.handle('model:download', async (event, force) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const py = await getPythonCommand();
       if (!py) return { success: false, error: 'Python not found' };
 
-      const modelDir = path.join(app.getPath('userData'), 'models', 'pretrained');
-      const configPath = path.join(modelDir, 'config.json');
-      if (fs.existsSync(configPath)) {
-        if (win) win.webContents.send('model-download:progress', { type: 'status', text: '预训练模型已存在' });
-        return { success: true, path: modelDir };
-      }
+      const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
 
-      const projectRoot = path.join(__dirname, '..', '..', '..');
       const script = path.join(projectRoot, 'download_model.py');
       if (!fs.existsSync(script)) {
         return { success: false, error: 'download_model.py not found' };
       }
 
-      if (win) win.webContents.send('model-download:progress', { type: 'status', text: '正在下载预训练模型...' });
+      if (win) win.webContents.send('model-download:progress', { type: 'status', text: force ? '正在重新下载预训练模型...' : '正在下载预训练模型...' });
 
-      downloadProcess = spawn(py.cmd, [
+      const spawnArgs = [
         script,
         '--output', modelDir,
         '--model', 'bert-base-multilingual-cased',
-      ], {
+      ];
+      if (force) spawnArgs.push('--force');
+
+      downloadProcess = spawn(py.cmd, spawnArgs, {
         cwd: path.dirname(script),
       });
 

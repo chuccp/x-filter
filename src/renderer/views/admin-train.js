@@ -208,6 +208,30 @@ export default class AdminTrainView {
         <span style="color:var(--success);font-size:16px">✔</span>
         <span>预训练模型已下载 <span style="color:var(--text-muted)">bert-base-multilingual-cased</span></span>
       </div>`;
+      const btn = el('button', {
+        className: 'btn btn-sm btn-outline',
+        id: 'btn-redownload-pretrained',
+        onClick: () => this.downloadPretrained(true),
+      }, '重新下载');
+      actionsEl.appendChild(btn);
+    } else if (res.partial) {
+      statusEl.innerHTML = `<div class="log-line" style="display:flex;align-items:center;gap:8px;color:#f59e0b">
+        <span style="font-size:16px">⚠</span>
+        <span>预训练模型下载未完成，可以继续下载</span>
+      </div>`;
+      const btn = el('button', {
+        className: 'btn btn-primary',
+        id: 'btn-download-pretrained',
+        onClick: () => this.downloadPretrained(false),
+      }, '继续下载');
+      actionsEl.appendChild(btn);
+      const btnForce = el('button', {
+        className: 'btn btn-sm btn-outline',
+        style: 'margin-left:8px',
+        id: 'btn-redownload-pretrained',
+        onClick: () => this.downloadPretrained(true),
+      }, '重新下载');
+      actionsEl.appendChild(btnForce);
     } else {
       statusEl.innerHTML = `<div class="log-line" style="display:flex;align-items:center;gap:8px;color:#f59e0b">
         <span style="font-size:16px">⚠</span>
@@ -216,7 +240,7 @@ export default class AdminTrainView {
       const btn = el('button', {
         className: 'btn btn-primary',
         id: 'btn-download-pretrained',
-        onClick: () => this.downloadPretrained(),
+        onClick: () => this.downloadPretrained(false),
       }, '下载预训练模型');
       actionsEl.appendChild(btn);
       const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将下载 bert-base-multilingual-cased 到本地，约 700MB');
@@ -226,18 +250,20 @@ export default class AdminTrainView {
     this.updateTrainAccess();
   }
 
-  async downloadPretrained() {
+  async downloadPretrained(force = false) {
     this.downloading = true;
     const btn = document.getElementById('btn-download-pretrained');
+    const btnRe = document.getElementById('btn-redownload-pretrained');
     if (btn) { btn.disabled = true; btn.textContent = '正在下载...'; }
+    if (btnRe) { btnRe.disabled = true; }
 
     this.logCard.style.display = 'flex';
     document.getElementById('train-log').innerHTML = '';
     document.getElementById('train-progress').style.display = 'block';
     document.getElementById('train-bar').style.width = '0%';
-    document.getElementById('train-progress-text').textContent = '正在下载预训练模型...';
+    document.getElementById('train-progress-text').textContent = force ? '正在重新下载预训练模型...' : '正在下载预训练模型...';
 
-    const res = await apiInvoke('model:download');
+    const res = await apiInvoke('model:download', force);
 
     this.downloading = false;
     document.getElementById('train-progress').style.display = 'none';
@@ -250,7 +276,9 @@ export default class AdminTrainView {
     } else {
       this.appendLog('下载失败: ' + (res.error || '未知错误'), 'log-line');
       const btn2 = document.getElementById('btn-download-pretrained');
-      if (btn2) { btn2.disabled = false; btn2.textContent = '重新下载'; }
+      if (btn2) { btn2.disabled = false; btn2.textContent = '继续下载'; }
+      const btnRe2 = document.getElementById('btn-redownload-pretrained');
+      if (btnRe2) { btnRe2.disabled = false; }
     }
   }
 
@@ -261,20 +289,21 @@ export default class AdminTrainView {
 
   handleDownloadProgress(data) {
     if (data.type === 'status') {
-      this.appendLog(data.text, 'log-line success');
       // Parse percent from status like "Downloading config.json: 50%"
       const match = data.text.match(/(\d+)%/);
       if (match) {
         document.getElementById('train-bar').style.width = match[1] + '%';
-        document.getElementById('train-progress-text').textContent = data.text;
       }
+      document.getElementById('train-progress-text').textContent = data.text;
+      this.updateLastLog(data.text, 'log-line success');
     } else if (data.type === 'progress') {
       const pct = data.percent || 0;
       document.getElementById('train-bar').style.width = pct + '%';
-      document.getElementById('train-progress-text').textContent =
-        `${data.file}: ${pct}%` + (data.total ? ` (${(data.downloaded / 1024 / 1024).toFixed(1)}/${(data.total / 1024 / 1024).toFixed(1)} MB)` : '');
+      const text = `${data.file}: ${pct}%` + (data.total ? ` (${(data.downloaded / 1024 / 1024).toFixed(1)}/${(data.total / 1024 / 1024).toFixed(1)} MB)` : '');
+      document.getElementById('train-progress-text').textContent = text;
+      this.updateLastLog(text, 'log-line success');
     } else if (data.type === 'log') {
-      this.appendLog(data.text, 'log-line');
+      this.updateLastLog(data.text, 'log-line');
     }
   }
 
@@ -415,6 +444,19 @@ export default class AdminTrainView {
     if (!log) return;
     const line = el('div', { className }, text);
     log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  updateLastLog(text, className = 'log-line') {
+    const log = document.getElementById('train-log');
+    if (!log) return;
+    const last = log.lastElementChild;
+    if (last && last.className === className) {
+      last.textContent = text;
+    } else {
+      const line = el('div', { className }, text);
+      log.appendChild(line);
+    }
     log.scrollTop = log.scrollHeight;
   }
 }

@@ -1,9 +1,11 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 const { initDatabase, closeDatabase } = require('./src/main/database');
 const { registerIpcHandlers } = require('./src/main/ipc-handlers');
 
 let mainWindow;
+
+app.disableHardwareAcceleration();
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -23,6 +25,17 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
+
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    const menu = Menu.buildFromTemplate([
+      { label: '剪切', role: 'cut', visible: params.editFlags.canCut },
+      { label: '复制', role: 'copy', visible: params.editFlags.canCopy },
+      { label: '粘贴', role: 'paste', visible: params.editFlags.canPaste },
+      { type: 'separator', visible: params.editFlags.canSelectAll },
+      { label: '全选', role: 'selectAll', visible: params.editFlags.canSelectAll },
+    ]);
+    menu.popup();
+  });
 }
 
 app.whenReady().then(async () => {
