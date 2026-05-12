@@ -10,6 +10,7 @@ Progress lines (for Electron UI parsing):
 """
 
 import argparse
+import io
 import json
 import os
 import sys
@@ -31,11 +32,13 @@ def main():
     parser.add_argument("--force", action="store_true", help="Delete existing directory and re-download from scratch")
     args = parser.parse_args()
 
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import HfApi, snapshot_download
     from tqdm import tqdm as _tqdm
 
     class _StatusTqdm(_tqdm):
+        """Custom tqdm that reports download progress via [STATUS]/[PROGRESS]."""
         def __init__(self, *a, **kw):
+            kw['file'] = io.StringIO()  # suppress tqdm's own bar output
             super().__init__(*a, **kw)
             self._last_pct = -1
             self._last_time = time.time()
@@ -47,16 +50,20 @@ def main():
                 pct = int(self.n / self.total * 100)
                 if pct >= self._last_pct + 1 or pct == 100:
                     self._last_pct = pct
-                    name = (self.desc or "model").strip()
-                    mb = self.n / 1024 / 1024
-                    total_mb = self.total / 1024 / 1024
-                    now = time.time()
-                    elapsed = now - self._last_time if self._last_time else 1
-                    speed_mb = (self.n - self._last_n) / 1024 / 1024 / elapsed if elapsed > 0 else 0
-                    self._last_time = now
-                    self._last_n = self.n
-                    status(f"Downloading {name}: {pct}% ({mb:.1f}/{total_mb:.1f} MB) {speed_mb:.1f} MB/s")
-                    progress(name, self.n, self.total, pct)
+                    name = (self.desc or "file").strip()
+                    # Heuristic: total <= 1000 → file count; else → bytes
+                    if self.total <= 1000:
+                        status(f"{name} {self.n}/{self.total}: {pct}%")
+                    else:
+                        mb = self.n / 1024 / 1024
+                        total_mb = self.total / 1024 / 1024
+                        now = time.time()
+                        elapsed = now - self._last_time if self._last_time else 1
+                        speed_mb = (self.n - self._last_n) / 1024 / 1024 / elapsed if elapsed > 0 else 0
+                        self._last_time = now
+                        self._last_n = self.n
+                        status(f"{name}: {pct}% ({mb:.1f}/{total_mb:.1f} MB) {speed_mb:.1f} MB/s")
+                        progress(name, self.n, self.total, pct)
 
     output_dir = args.output
 
@@ -68,15 +75,30 @@ def main():
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # Check if model already fully downloaded
-    config_path = os.path.join(output_dir, "config.json")
-    if os.path.exists(config_path):
+    # Check if model is already fully downloaded (has weights)
+    has_weights = os.path.exists(os.path.join(output_dir, "model.safetensors")) \
+        or os.path.exists(os.path.join(output_dir, "pytorch_model.bin"))
+    if has_weights and not args.force:
         status(f"Model already exists at {output_dir}, skipping download")
         return
 
+    # List files to know what we're downloading
+    api = HfApi()
+    status(f"Fetching file list: {args.model}")
+    try:
+        repo_files = list(api.list_repo_files(args.model))
+    except Exception:
+        repo_files = []
+    status(f"Found {len(repo_files)} files")
+
     status(f"Downloading model: {args.model}")
-    # snapshot_download automatically resumes incomplete downloads
-    snapshot_download(args.model, local_dir=output_dir, tqdm_class=_StatusTqdm)
+    # snapshot_download with tqdm_class handles per-file progress (huggingface_hub >= 0.22)
+    snapshot_download(
+        args.model,
+        local_dir=output_dir,
+        tqdm_class=_StatusTqdm,
+        resume_download=True,
+    )
     status(f"Model downloaded to {output_dir}")
 
 

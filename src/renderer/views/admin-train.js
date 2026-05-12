@@ -206,7 +206,7 @@ export default class AdminTrainView {
     if (res.downloaded) {
       statusEl.innerHTML = `<div class="log-line success" style="display:flex;align-items:center;gap:8px">
         <span style="color:var(--success);font-size:16px">✔</span>
-        <span>预训练模型已下载 <span style="color:var(--text-muted)">bert-base-multilingual-cased</span></span>
+        <span>预训练模型完整 <span style="color:var(--text-muted)">bert-base-multilingual-cased</span></span>
       </div>`;
       const btn = el('button', {
         className: 'btn btn-sm btn-outline',
@@ -215,10 +215,13 @@ export default class AdminTrainView {
       }, '重新下载');
       actionsEl.appendChild(btn);
     } else if (res.partial) {
+      const missingHtml = res.missing && res.missing.length > 0
+        ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">缺少: ${res.missing.join(', ')}</div>`
+        : '';
       statusEl.innerHTML = `<div class="log-line" style="display:flex;align-items:center;gap:8px;color:#f59e0b">
         <span style="font-size:16px">⚠</span>
-        <span>预训练模型下载未完成，可以继续下载</span>
-      </div>`;
+        <span>预训练模型不完整</span>
+      </div>${missingHtml}`;
       const btn = el('button', {
         className: 'btn btn-primary',
         id: 'btn-download-pretrained',
@@ -289,21 +292,22 @@ export default class AdminTrainView {
 
   handleDownloadProgress(data) {
     if (data.type === 'status') {
-      // Parse percent from status like "Downloading config.json: 50%"
+      // Parse per-file percent from status like "model.safetensors: 50% (350.0/700.0 MB) 5.2 MB/s"
       const match = data.text.match(/(\d+)%/);
       if (match) {
         document.getElementById('train-bar').style.width = match[1] + '%';
       }
       document.getElementById('train-progress-text').textContent = data.text;
-      this.updateLastLog(data.text, 'log-line success');
+      this.appendLog(data.text, 'log-line success');
     } else if (data.type === 'progress') {
       const pct = data.percent || 0;
       document.getElementById('train-bar').style.width = pct + '%';
-      const text = `${data.file}: ${pct}%` + (data.total ? ` (${(data.downloaded / 1024 / 1024).toFixed(1)}/${(data.total / 1024 / 1024).toFixed(1)} MB)` : '');
+      const mb = data.downloaded / 1024 / 1024;
+      const totalMb = data.total / 1024 / 1024;
+      const text = `${data.file}: ${pct}% (${mb.toFixed(1)}/${totalMb.toFixed(1)} MB)`;
       document.getElementById('train-progress-text').textContent = text;
-      this.updateLastLog(text, 'log-line success');
     } else if (data.type === 'log') {
-      this.updateLastLog(data.text, 'log-line');
+      this.appendLog(data.text, 'log-line');
     }
   }
 

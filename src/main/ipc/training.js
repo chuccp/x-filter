@@ -47,7 +47,23 @@ async function getPythonCommand() {
     if (ver) return { cmd, version: ver, source: 'system' };
   }
 
-  // 2. Try commands via execSync (shell PATH)
+  // 2. On macOS, scan Homebrew paths first (prefer Python 3.12+)
+  if (process.platform === 'darwin') {
+    const homebrewPaths = [
+      '/opt/homebrew/opt/x-filter-venv/bin/python3',
+      '/opt/homebrew/bin/python3.12',
+      '/opt/homebrew/bin/python3',
+      '/usr/local/bin/python3.12',
+      '/usr/local/bin/python3',
+    ];
+    const found = findPythonInPaths(homebrewPaths);
+    if (found) {
+      const ver = tryExec(found);
+      if (ver) return { cmd: found, version: ver, source: 'homebrew' };
+    }
+  }
+
+  // 3. Try commands via execSync (shell PATH)
   if (process.platform === 'win32') {
     const names = ['python', 'python3', 'py'];
     for (const name of names) {
@@ -61,7 +77,7 @@ async function getPythonCommand() {
     }
   }
 
-  // 3. Fallback: scan common Windows install directories
+  // 4. Fallback: scan common Windows install directories
   if (process.platform === 'win32') {
     const home = process.env.USERPROFILE || '';
     const versions = ['313', '312', '311', '310', '39', '38'];
@@ -345,12 +361,30 @@ function register() {
 
   ipcMain.handle('model:download-status', async () => {
     const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
-    const configPath = path.join(modelDir, 'config.json');
     const dirExists = fs.existsSync(modelDir);
     const hasFiles = dirExists && fs.readdirSync(modelDir).length > 0;
+
+    // Check for essential model files: config, weights, tokenizer, vocab
+    const requiredFiles = [
+      'config.json',
+      'tokenizer_config.json',
+      'vocab.txt',
+    ];
+    // Weights: at least one of model.safetensors or pytorch_model.bin
+    const hasWeights = fs.existsSync(path.join(modelDir, 'model.safetensors'))
+      || fs.existsSync(path.join(modelDir, 'pytorch_model.bin'));
+
+    const missing = [];
+    for (const f of requiredFiles) {
+      if (!fs.existsSync(path.join(modelDir, f))) missing.push(f);
+    }
+    if (!hasWeights) missing.push('model weights (model.safetensors or pytorch_model.bin)');
+
+    const complete = missing.length === 0;
     return {
-      downloaded: fs.existsSync(configPath),
-      partial: hasFiles && !fs.existsSync(configPath),
+      downloaded: complete,
+      partial: hasFiles && !complete,
+      missing,
       path: modelDir,
     };
   });

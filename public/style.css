@@ -708,6 +708,23 @@ textarea:focus { border-color: var(--primary); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Train view — compact layout */
+#view-train .card { margin-bottom: 8px; }
+#view-train .card-header { padding: 6px 12px; gap: 6px; }
+#view-train .card-header h2 { font-size: 13px; }
+#view-train .card-icon { font-size: 14px; }
+#view-train .card-body { padding: 8px 12px; }
+#view-train .log-line { padding: 2px 0; font-size: 12px; }
+#view-train .log-container { font-size: 12px; }
+#view-train .progress-bar { margin-top: 6px; }
+#view-train .progress-text { font-size: 11px; margin-top: 2px; }
+#view-train .stat-card { padding: 8px 12px; }
+#view-train .stat-card .num { font-size: 18px; }
+#view-train .stat-card .label { font-size: 11px; }
+#view-train .stats-grid { gap: 10px; }
+#view-train .log-line.success,
+#view-train .log-line[class*="log-line"] { font-size: 12px; line-height: 1.4; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
