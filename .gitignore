@@ -26,3 +26,4 @@ data/
 model/
 /.claude
 nul
+/checkpoints
