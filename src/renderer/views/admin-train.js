@@ -6,7 +6,9 @@ export default class AdminTrainView {
   constructor() {
     this.training = false;
     this.installing = false;
+    this.downloading = false;
     this.envReady = false;
+    this.pretrainedReady = false;
     this.buildUI();
     this.bindEvents();
     this.checkEnv();
@@ -29,7 +31,21 @@ export default class AdminTrainView {
       ),
     ));
 
-    // Card 2: Training (initially hidden until env is ready)
+    // Card 2: Pretrained model download
+    this.pretrainedCard = el('div', { className: 'card', id: 'pretrained-card', style: 'display:none' },
+      el('div', { className: 'card-header' },
+        el('span', { className: 'card-icon' }, '📦'),
+        el('h2', {}, '预训练模型'),
+        el('button', { className: 'btn btn-sm btn-outline', id: 'btn-check-pretrained', onClick: () => this.checkPretrained(), style: 'margin-left:auto' }, '🔄 检查'),
+      ),
+      el('div', { className: 'card-body' },
+        el('div', { id: 'pretrained-status', html: '<span style="color:var(--text-muted)">正在检查...</span>' }),
+        el('div', { id: 'pretrained-actions', style: 'margin-top:12px' }),
+      ),
+    );
+    c.appendChild(this.pretrainedCard);
+
+    // Card 3: Training (initially hidden until env is ready)
     this.trainingCard = el('div', { className: 'card', id: 'training-card', style: 'display:none' },
       el('div', { className: 'card-header', style: 'padding:4px 16px' },
         el('span', { className: 'card-icon' }, '🧠'),
@@ -86,6 +102,9 @@ export default class AdminTrainView {
     });
     ipcRenderer.on('train:install-log', (event, text) => {
       this.appendLog(text, 'log-line');
+    });
+    ipcRenderer.on('model-download:progress', (event, data) => {
+      this.handleDownloadProgress(data);
     });
   }
 
@@ -168,8 +187,104 @@ export default class AdminTrainView {
 
     this.envReady = env.python && env.packages.all;
     if (this.envReady) {
+      this.pretrainedCard.style.display = 'block';
+      this.checkPretrained();
+    }
+  }
+
+  // ── Pretrained model download ─────────────────────────────
+
+  async checkPretrained() {
+    const statusEl = document.getElementById('pretrained-status');
+    const actionsEl = document.getElementById('pretrained-actions');
+    statusEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查预训练模型...</span>';
+    actionsEl.innerHTML = '';
+
+    const res = await apiInvoke('model:download-status');
+    this.pretrainedReady = res.downloaded;
+
+    if (res.downloaded) {
+      statusEl.innerHTML = `<div class="log-line success" style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--success);font-size:16px">✔</span>
+        <span>预训练模型已下载 <span style="color:var(--text-muted)">bert-base-multilingual-cased</span></span>
+      </div>`;
+    } else {
+      statusEl.innerHTML = `<div class="log-line" style="display:flex;align-items:center;gap:8px;color:#f59e0b">
+        <span style="font-size:16px">⚠</span>
+        <span>预训练模型未下载 — 训练前需要先下载</span>
+      </div>`;
+      const btn = el('button', {
+        className: 'btn btn-primary',
+        id: 'btn-download-pretrained',
+        onClick: () => this.downloadPretrained(),
+      }, '下载预训练模型');
+      actionsEl.appendChild(btn);
+      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将下载 bert-base-multilingual-cased 到本地，约 700MB');
+      actionsEl.appendChild(hint);
+    }
+
+    this.updateTrainAccess();
+  }
+
+  async downloadPretrained() {
+    this.downloading = true;
+    const btn = document.getElementById('btn-download-pretrained');
+    if (btn) { btn.disabled = true; btn.textContent = '正在下载...'; }
+
+    this.logCard.style.display = 'flex';
+    document.getElementById('train-log').innerHTML = '';
+    document.getElementById('train-progress').style.display = 'block';
+    document.getElementById('train-bar').style.width = '0%';
+    document.getElementById('train-progress-text').textContent = '正在下载预训练模型...';
+
+    const res = await apiInvoke('model:download');
+
+    this.downloading = false;
+    document.getElementById('train-progress').style.display = 'none';
+
+    if (res.success) {
+      this.pretrainedReady = true;
+      this.checkPretrained();
       this.trainingCard.style.display = 'block';
       this.refreshData();
+    } else {
+      this.appendLog('下载失败: ' + (res.error || '未知错误'), 'log-line');
+      const btn2 = document.getElementById('btn-download-pretrained');
+      if (btn2) { btn2.disabled = false; btn2.textContent = '重新下载'; }
+    }
+  }
+
+  async cancelDownload() {
+    await apiInvoke('model:download-cancel');
+    this.downloading = false;
+  }
+
+  handleDownloadProgress(data) {
+    if (data.type === 'status') {
+      this.appendLog(data.text, 'log-line success');
+      // Parse percent from status like "Downloading config.json: 50%"
+      const match = data.text.match(/(\d+)%/);
+      if (match) {
+        document.getElementById('train-bar').style.width = match[1] + '%';
+        document.getElementById('train-progress-text').textContent = data.text;
+      }
+    } else if (data.type === 'progress') {
+      const pct = data.percent || 0;
+      document.getElementById('train-bar').style.width = pct + '%';
+      document.getElementById('train-progress-text').textContent =
+        `${data.file}: ${pct}%` + (data.total ? ` (${(data.downloaded / 1024 / 1024).toFixed(1)}/${(data.total / 1024 / 1024).toFixed(1)} MB)` : '');
+    } else if (data.type === 'log') {
+      this.appendLog(data.text, 'log-line');
+    }
+  }
+
+  updateTrainAccess() {
+    // Only show training card when pretrained model is ready
+    if (this.pretrainedReady) {
+      this.trainingCard.style.display = 'block';
+      this.refreshData();
+    } else {
+      this.trainingCard.style.display = 'none';
     }
   }
 
@@ -239,6 +354,10 @@ export default class AdminTrainView {
   }
 
   async startTraining() {
+    if (!this.pretrainedReady) {
+      showStatus('train-status', '请先下载预训练模型', false);
+      return;
+    }
     this.training = true;
     document.getElementById('btn-train').style.display = 'none';
     document.getElementById('btn-cancel-train').style.display = 'inline-flex';

@@ -6,6 +6,7 @@ const db = require('../database');
 const modelManager = require('../model-manager');
 
 let trainingProcess = null;
+let downloadProcess = null;
 
 // Use execSync to reliably resolve PATH through cmd.exe
 function tryExec(cmd) {
@@ -268,10 +269,16 @@ function register() {
 
       if (win) win.webContents.send('train:progress', { type: 'status', text: 'Starting training...' });
 
+      // Check if pretrained model is available locally
+      const pretrainedDir = path.join(app.getPath('userData'), 'models', 'pretrained');
+      const hasPretrained = fs.existsSync(path.join(pretrainedDir, 'config.json'));
+      const modelArg = hasPretrained ? pretrainedDir : 'bert-base-multilingual-cased';
+
       trainingProcess = spawn(py.cmd, [
         trainScript,
         '--csv', csvPath,
         '--output', modelDir,
+        '--model', modelArg,
         '--epochs', '5',
       ], {
         cwd: path.dirname(trainScript),
@@ -328,6 +335,92 @@ function register() {
     if (trainingProcess) {
       trainingProcess.kill();
       trainingProcess = null;
+    }
+    return { success: true };
+  });
+
+  // ── Pretrained model download ──────────────────────────────────
+
+  ipcMain.handle('model:download-status', async () => {
+    const modelDir = path.join(app.getPath('userData'), 'models', 'pretrained');
+    const configPath = path.join(modelDir, 'config.json');
+    return { downloaded: fs.existsSync(configPath), path: modelDir };
+  });
+
+  ipcMain.handle('model:download', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const py = await getPythonCommand();
+      if (!py) return { success: false, error: 'Python not found' };
+
+      const modelDir = path.join(app.getPath('userData'), 'models', 'pretrained');
+      const configPath = path.join(modelDir, 'config.json');
+      if (fs.existsSync(configPath)) {
+        if (win) win.webContents.send('model-download:progress', { type: 'status', text: '预训练模型已存在' });
+        return { success: true, path: modelDir };
+      }
+
+      const projectRoot = path.join(__dirname, '..', '..', '..');
+      const script = path.join(projectRoot, 'download_model.py');
+      if (!fs.existsSync(script)) {
+        return { success: false, error: 'download_model.py not found' };
+      }
+
+      if (win) win.webContents.send('model-download:progress', { type: 'status', text: '正在下载预训练模型...' });
+
+      downloadProcess = spawn(py.cmd, [
+        script,
+        '--output', modelDir,
+        '--model', 'bert-base-multilingual-cased',
+      ], {
+        cwd: path.dirname(script),
+      });
+
+      downloadProcess.stdout.on('data', (data) => {
+        const lines = data.toString().trim().split('\n');
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          if (win) {
+            if (line.startsWith('[STATUS]')) {
+              win.webContents.send('model-download:progress', { type: 'status', text: line.slice(9) });
+            } else if (line.startsWith('[PROGRESS]')) {
+              try {
+                const info = JSON.parse(line.slice(11));
+                win.webContents.send('model-download:progress', { type: 'progress', ...info });
+              } catch (e) { /* ignore */ }
+            } else {
+              win.webContents.send('model-download:progress', { type: 'log', text: line });
+            }
+          }
+        }
+      });
+
+      downloadProcess.stderr.on('data', (data) => {
+        const text = data.toString().trim();
+        if (text && win) win.webContents.send('model-download:progress', { type: 'log', text: '[stderr] ' + text });
+      });
+
+      const exitCode = await new Promise((resolve) => {
+        downloadProcess.on('close', resolve);
+      });
+      downloadProcess = null;
+
+      if (exitCode === 0) {
+        if (win) win.webContents.send('model-download:progress', { type: 'status', text: '预训练模型下载完成' });
+        return { success: true, path: modelDir };
+      } else {
+        return { success: false, error: `Download exited with code ${exitCode}` };
+      }
+    } catch (e) {
+      downloadProcess = null;
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('model:download-cancel', async () => {
+    if (downloadProcess) {
+      downloadProcess.kill();
+      downloadProcess = null;
     }
     return { success: true };
   });

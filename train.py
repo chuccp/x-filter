@@ -123,8 +123,15 @@ def main():
     status(f"Spam: {sum(train_labels)}, Not spam: {len(train_labels) - sum(train_labels)}")
 
     status("Loading tokenizer and model...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForSequenceClassification.from_pretrained(args.model, num_labels=2)
+    # Use local pretrained model directory if --model points to a local path with config.json
+    model_source = args.model
+    if os.path.exists(os.path.join(args.model, 'config.json')):
+        status(f"Using local pretrained model: {args.model}")
+    else:
+        status(f"Downloading model from HuggingFace Hub: {args.model}")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_source)
+    model = AutoModelForSequenceClassification.from_pretrained(model_source, num_labels=2)
 
     status("Tokenizing...")
     train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=args.max_len)
