@@ -81,6 +81,7 @@ async function initDatabase() {
     spam_threshold: '0.8',
     max_scroll: '50',
     scroll_delay: '500',
+    language: 'zh-CN',
   };
   for (const [k, v] of Object.entries(defaults)) {
     db.run('INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)', [k, v]);

@@ -1,4 +1,5 @@
 import { showStatus, apiInvoke, updateSidebarStatus } from '../ui.js';
+import { t } from '../../i18n/index.js';
 
 export default class ConnectionView {
   constructor() {
@@ -13,21 +14,21 @@ export default class ConnectionView {
   async connect() {
     const host = document.getElementById('host').value;
     const port = parseInt(document.getElementById('port').value);
-    showStatus('conn-status', '正在连接 Chrome...', true);
+    showStatus('conn-status', t('connect.connecting'), true);
     const res = await apiInvoke('cdp:connect', host, port);
     if (res.success) {
-      showStatus('conn-status', '已连接到 Chrome 浏览器');
+      showStatus('conn-status', t('connect.connected'));
       document.getElementById('btn-connect').style.display = 'none';
       document.getElementById('btn-disconnect').style.display = 'inline-flex';
       updateSidebarStatus(true);
     } else {
-      showStatus('conn-status', '连接失败：' + res.error, false);
+      showStatus('conn-status', t('connect.connect_fail', { error: res.error }), false);
     }
   }
 
   async disconnect() {
     await apiInvoke('cdp:disconnect');
-    showStatus('conn-status', '已断开连接');
+    showStatus('conn-status', t('connect.disconnected'));
     document.getElementById('btn-connect').style.display = 'inline-flex';
     document.getElementById('btn-disconnect').style.display = 'none';
     updateSidebarStatus(false);

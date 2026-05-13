@@ -6,6 +6,7 @@ function registerIpcHandlers() {
   require('./ipc/block').register();
   require('./ipc/training').register();
   require('./ipc/app').register();
+  require('./ipc/i18n').register();
 }
 
 module.exports = { registerIpcHandlers };

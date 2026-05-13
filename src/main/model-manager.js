@@ -5,6 +5,7 @@
  */
 const path = require('path');
 const { app } = require('electron');
+const { t } = require('./i18n');
 
 let pipeline = null;
 let modelLoaded = false;
@@ -23,7 +24,7 @@ async function loadModel(modelPath) {
   let loadPath = modelDir;
 
   if (!fs.existsSync(path.join(loadPath, 'config.json'))) {
-    modelStatus = { loaded: false, error: 'Model not found. Run train.py first and place model in ' + modelDir };
+    modelStatus = { loaded: false, error: t('model.not_found', { path: modelDir }) };
     return modelStatus;
   }
 
@@ -68,7 +69,7 @@ function buildInput(text, postText) {
 
 async function predict(text, postText) {
   if (!modelLoaded || !pipeline) {
-    throw new Error('Model not loaded');
+    throw new Error(t('model.not_loaded'));
   }
   const input = buildInput(text, postText);
   const result = await pipeline(input);
@@ -82,7 +83,7 @@ async function predict(text, postText) {
 
 async function predictBatch(items) {
   if (!modelLoaded || !pipeline) {
-    throw new Error('Model not loaded');
+    throw new Error(t('model.not_loaded'));
   }
   const results = [];
   for (const item of items) {

@@ -1,4 +1,5 @@
 import { showStatus, apiInvoke, el } from '../ui.js';
+import { t } from '../../i18n/index.js';
 
 const { ipcRenderer } = require('electron');
 
@@ -22,11 +23,11 @@ export default class AdminTrainView {
     c.appendChild(el('div', { className: 'card' },
       el('div', { className: 'card-header' },
         el('span', { className: 'card-icon' }, '🔧'),
-        el('h2', {}, '环境检查'),
-        el('button', { className: 'btn btn-sm btn-outline', id: 'btn-recheck-env', onClick: () => this.checkEnv(), style: 'margin-left:auto' }, '🔄 重新检测'),
+        el('h2', {}, t('train.env_title')),
+        el('button', { className: 'btn btn-sm btn-outline', id: 'btn-recheck-env', onClick: () => this.checkEnv(), style: 'margin-left:auto' }, t('train.env_btn_recheck')),
       ),
       el('div', { className: 'card-body' },
-        el('div', { id: 'env-check', html: '<span style="color:var(--text-muted)">正在检查...</span>' }),
+        el('div', { id: 'env-check', html: `<span style="color:var(--text-muted)">${t('train.env_checking')}</span>` }),
         el('div', { id: 'env-actions', style: 'margin-top:12px' }),
       ),
     ));
@@ -35,11 +36,11 @@ export default class AdminTrainView {
     this.pretrainedCard = el('div', { className: 'card', id: 'pretrained-card', style: 'display:none' },
       el('div', { className: 'card-header' },
         el('span', { className: 'card-icon' }, '📦'),
-        el('h2', {}, '预训练模型'),
-        el('button', { className: 'btn btn-sm btn-outline', id: 'btn-check-pretrained', onClick: () => this.checkPretrained(), style: 'margin-left:auto' }, '🔄 检查'),
+        el('h2', {}, t('train.pretrained_title')),
+        el('button', { className: 'btn btn-sm btn-outline', id: 'btn-check-pretrained', onClick: () => this.checkPretrained(), style: 'margin-left:auto' }, t('train.pretrained_btn_check')),
       ),
       el('div', { className: 'card-body' },
-        el('div', { id: 'pretrained-status', html: '<span style="color:var(--text-muted)">正在检查...</span>' }),
+        el('div', { id: 'pretrained-status', html: `<span style="color:var(--text-muted)">${t('train.checking_pretrained')}</span>` }),
         el('div', { id: 'pretrained-actions', style: 'margin-top:12px' }),
       ),
     );
@@ -49,23 +50,23 @@ export default class AdminTrainView {
     this.trainingCard = el('div', { className: 'card', id: 'training-card', style: 'display:none' },
       el('div', { className: 'card-header', style: 'padding:4px 16px' },
         el('span', { className: 'card-icon' }, '🧠'),
-        el('h2', {}, '训练模型'),
+        el('h2', {}, t('train.training_title')),
         el('span', { id: 'train-data-stats', style: 'margin-left:12px;font-size:12px;color:var(--text-muted)' }),
         el('div', { style: 'margin-left:auto;display:flex;align-items:center;gap:6px' },
-          el('label', { style: 'font-size:12px;color:var(--text-dim)' }, '轮数'),
+          el('label', { style: 'font-size:12px;color:var(--text-dim)' }, t('train.epochs_label')),
           el('input', { type: 'number', id: 'train-epochs', value: '5', min: '1', max: '20', style: 'width:56px;font-size:13px' }),
-          el('button', { className: 'btn btn-primary btn-sm', id: 'btn-train' }, '训练'),
-          el('button', { className: 'btn btn-outline btn-sm', id: 'btn-cancel-train', style: 'display:none' }, '取消'),
+          el('button', { className: 'btn btn-primary btn-sm', id: 'btn-train' }, t('train.btn_train_text')),
+          el('button', { className: 'btn btn-outline btn-sm', id: 'btn-cancel-train', style: 'display:none' }, t('train.btn_cancel')),
         ),
       ),
     );
     c.appendChild(this.trainingCard);
 
-    // Card 3: Model info
+    // Card 4: Model info
     this.modelCard = el('div', { className: 'card', id: 'model-info-card', style: 'display:none' },
       el('div', { className: 'card-header' },
         el('span', { className: 'card-icon' }, '📊'),
-        el('h2', {}, '当前模型'),
+        el('h2', {}, t('train.model_title')),
       ),
       el('div', { className: 'card-body' },
         el('div', { id: 'train-model-info' }),
@@ -73,11 +74,11 @@ export default class AdminTrainView {
     );
     c.appendChild(this.modelCard);
 
-    // Card 4: Log
+    // Card 5: Log
     this.logCard = el('div', { className: 'card', id: 'log-card', style: 'display:none;flex:1;min-height:0;flex-direction:column' },
       el('div', { className: 'card-header' },
         el('span', { className: 'card-icon' }, '📜'),
-        el('h2', {}, '输出日志'),
+        el('h2', {}, t('train.log_title')),
       ),
       el('div', { className: 'card-body', style: 'flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0' },
         el('div', { id: 'train-progress', style: 'display:none;margin-bottom:8px' },
@@ -93,8 +94,16 @@ export default class AdminTrainView {
   }
 
   bindEvents() {
-    document.getElementById('btn-train').addEventListener('click', () => this.startTraining());
-    document.getElementById('btn-cancel-train').addEventListener('click', () => this.cancelTraining());
+    const rebind = () => {
+      document.getElementById('btn-train').addEventListener('click', () => this.startTraining());
+      document.getElementById('btn-cancel-train').addEventListener('click', () => this.cancelTraining());
+    };
+    rebind();
+
+    document.addEventListener('language-changed', () => {
+      this.buildUI();
+      rebind();
+    });
 
     ipcRenderer.on('train:progress', (event, data) => {
       if (!this.training && data.type !== 'metrics') return;
@@ -112,14 +121,14 @@ export default class AdminTrainView {
 
   async checkEnv() {
     const envEl = document.getElementById('env-check');
-    envEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查 Python 环境...</span>';
+    envEl.innerHTML = `<span style="color:var(--text-muted)"><span class="spinner"></span> ${t('train.checking_python')}</span>`;
     document.getElementById('env-actions').innerHTML = '';
 
-    envEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查依赖包...</span>';
+    envEl.innerHTML = `<span style="color:var(--text-muted)"><span class="spinner"></span> ${t('train.checking_deps')}</span>`;
 
     const res = await apiInvoke('train:check-env');
     if (!res.success) {
-      document.getElementById('env-check').innerHTML = '<span style="color:var(--danger)">环境检查失败</span>';
+      document.getElementById('env-check').innerHTML = `<span style="color:var(--danger)">${t('train.env_fail')}</span>`;
       return;
     }
 
@@ -130,12 +139,12 @@ export default class AdminTrainView {
     if (env.python) {
       items.push(`<div class="log-line success" style="display:flex;align-items:center;gap:8px">
         <span style="color:var(--success);font-size:16px">✔</span>
-        <span>Python 已安装 <span style="color:var(--text-muted)">${env.pythonVersion}</span></span>
+        <span>${t('train.python_ok')} <span style="color:var(--text-muted)">${env.pythonVersion}</span></span>
       </div>`);
     } else {
       items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--danger)">
         <span style="font-size:16px">✘</span>
-        <span>Python 未安装 — 请先到 <a href="https://www.python.org/downloads/" target="_blank" style="color:var(--accent)">python.org</a> 下载安装（安装时勾选 "Add Python to PATH"），然后重新检测</span>
+        <span>${t('train.python_not_found')}</span>
       </div>`);
     }
 
@@ -143,12 +152,12 @@ export default class AdminTrainView {
     if (env.cuda && env.cuda.available) {
       items.push(`<div class="log-line success" style="display:flex;align-items:center;gap:8px">
         <span style="color:var(--success);font-size:16px">✔</span>
-        <span>CUDA ${env.cuda.version} 可用 <span style="color:var(--text-muted)">(PyTorch 将使用 ${env.cuda.cudaTag})</span></span>
+        <span>${t('train.cuda_available', { version: env.cuda.version, tag: env.cuda.cudaTag })}</span>
       </div>`);
     } else {
       items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--text-dim)">
         <span style="font-size:16px">·</span>
-        <span>CUDA 未检测到 — 将安装 CPU 版 PyTorch</span>
+        <span>${t('train.cuda_not_found')}</span>
       </div>`);
     }
 
@@ -157,13 +166,13 @@ export default class AdminTrainView {
       if (env.packages.all) {
         items.push(`<div class="log-line success" style="display:flex;align-items:center;gap:8px">
           <span style="color:var(--success);font-size:16px">✔</span>
-          <span>依赖包已就绪 (transformers, torch, datasets, etc.)</span>
+          <span>${t('train.deps_ok')}</span>
         </div>`);
       } else {
         const detail = env.packages.detail ? `<br><code style="font-size:11px;color:var(--text-muted)">${env.packages.detail}</code>` : '';
         items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--danger)">
           <span style="font-size:16px">✘</span>
-          <span>缺少 Python 依赖包${detail}</span>
+          <span>${t('train.deps_missing')}${detail}</span>
         </div>`);
       }
     }
@@ -179,9 +188,9 @@ export default class AdminTrainView {
         className: 'btn btn-primary',
         id: 'btn-install-deps',
         onClick: () => this.installDeps(),
-      }, '一键安装依赖');
+      }, t('train.btn_install_deps'));
       actions.appendChild(btn);
-      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将运行: pip install -i https://pypi.tuna.tsinghua.edu.cn/simple transformers torch datasets optimum[onnxruntime] scikit-learn pandas');
+      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, t('train.install_hint'));
       actions.appendChild(hint);
     }
 
@@ -197,7 +206,7 @@ export default class AdminTrainView {
   async checkPretrained() {
     const statusEl = document.getElementById('pretrained-status');
     const actionsEl = document.getElementById('pretrained-actions');
-    statusEl.innerHTML = '<span style="color:var(--text-muted)"><span class="spinner"></span> 正在检查预训练模型...</span>';
+    statusEl.innerHTML = `<span style="color:var(--text-muted)"><span class="spinner"></span> ${t('train.checking_pretrained')}</span>`;
     actionsEl.innerHTML = '';
 
     const res = await apiInvoke('model:download-status');
@@ -206,47 +215,47 @@ export default class AdminTrainView {
     if (res.downloaded) {
       statusEl.innerHTML = `<div class="log-line success" style="display:flex;align-items:center;gap:8px">
         <span style="color:var(--success);font-size:16px">✔</span>
-        <span>预训练模型完整 <span style="color:var(--text-muted)">bert-base-multilingual-cased</span></span>
+        <span>${t('train.pretrained_complete')}</span>
       </div>`;
       const btn = el('button', {
         className: 'btn btn-sm btn-outline',
         id: 'btn-redownload-pretrained',
         onClick: () => this.downloadPretrained(true),
-      }, '重新下载');
+      }, t('train.btn_redownload'));
       actionsEl.appendChild(btn);
     } else if (res.partial) {
       const missingHtml = res.missing && res.missing.length > 0
-        ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">缺少: ${res.missing.join(', ')}</div>`
+        ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${t('train.pretrained_missing', { files: res.missing.join(', ') })}</div>`
         : '';
       statusEl.innerHTML = `<div class="log-line" style="display:flex;align-items:center;gap:8px;color:#f59e0b">
         <span style="font-size:16px">⚠</span>
-        <span>预训练模型不完整</span>
+        <span>${t('train.pretrained_incomplete')}</span>
       </div>${missingHtml}`;
       const btn = el('button', {
         className: 'btn btn-primary',
         id: 'btn-download-pretrained',
         onClick: () => this.downloadPretrained(false),
-      }, '继续下载');
+      }, t('train.btn_continue_download'));
       actionsEl.appendChild(btn);
       const btnForce = el('button', {
         className: 'btn btn-sm btn-outline',
         style: 'margin-left:8px',
         id: 'btn-redownload-pretrained',
         onClick: () => this.downloadPretrained(true),
-      }, '重新下载');
+      }, t('train.btn_redownload'));
       actionsEl.appendChild(btnForce);
     } else {
       statusEl.innerHTML = `<div class="log-line" style="display:flex;align-items:center;gap:8px;color:#f59e0b">
         <span style="font-size:16px">⚠</span>
-        <span>预训练模型未下载 — 训练前需要先下载</span>
+        <span>${t('train.pretrained_not_downloaded')}</span>
       </div>`;
       const btn = el('button', {
         className: 'btn btn-primary',
         id: 'btn-download-pretrained',
         onClick: () => this.downloadPretrained(false),
-      }, '下载预训练模型');
+      }, t('train.btn_download'));
       actionsEl.appendChild(btn);
-      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, '将下载 bert-base-multilingual-cased 到本地，约 700MB');
+      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, t('train.download_hint'));
       actionsEl.appendChild(hint);
     }
 
@@ -257,14 +266,14 @@ export default class AdminTrainView {
     this.downloading = true;
     const btn = document.getElementById('btn-download-pretrained');
     const btnRe = document.getElementById('btn-redownload-pretrained');
-    if (btn) { btn.disabled = true; btn.textContent = '正在下载...'; }
+    if (btn) { btn.disabled = true; btn.textContent = t('train.downloading'); }
     if (btnRe) { btnRe.disabled = true; }
 
     this.logCard.style.display = 'flex';
     document.getElementById('train-log').innerHTML = '';
     document.getElementById('train-progress').style.display = 'block';
     document.getElementById('train-bar').style.width = '0%';
-    document.getElementById('train-progress-text').textContent = force ? '正在重新下载预训练模型...' : '正在下载预训练模型...';
+    document.getElementById('train-progress-text').textContent = force ? t('train.download_status_force') : t('train.download_status');
 
     const res = await apiInvoke('model:download', force);
 
@@ -277,9 +286,9 @@ export default class AdminTrainView {
       this.trainingCard.style.display = 'block';
       this.refreshData();
     } else {
-      this.appendLog('下载失败: ' + (res.error || '未知错误'), 'log-line');
+      this.appendLog(t('train.download_fail', { error: res.error || 'Unknown' }), 'log-line');
       const btn2 = document.getElementById('btn-download-pretrained');
-      if (btn2) { btn2.disabled = false; btn2.textContent = '继续下载'; }
+      if (btn2) { btn2.disabled = false; btn2.textContent = t('train.btn_continue_download'); }
       const btnRe2 = document.getElementById('btn-redownload-pretrained');
       if (btnRe2) { btnRe2.disabled = false; }
     }
@@ -292,7 +301,6 @@ export default class AdminTrainView {
 
   handleDownloadProgress(data) {
     if (data.type === 'status') {
-      // Parse per-file percent from status like "model.safetensors: 50% (350.0/700.0 MB) 5.2 MB/s"
       const match = data.text.match(/(\d+)%/);
       if (match) {
         document.getElementById('train-bar').style.width = match[1] + '%';
@@ -312,7 +320,6 @@ export default class AdminTrainView {
   }
 
   updateTrainAccess() {
-    // Only show training card when pretrained model is ready
     if (this.pretrainedReady) {
       this.trainingCard.style.display = 'block';
       this.refreshData();
@@ -324,22 +331,22 @@ export default class AdminTrainView {
   async installDeps() {
     this.installing = true;
     const btn = document.getElementById('btn-install-deps');
-    if (btn) { btn.disabled = true; btn.textContent = '正在安装...'; }
+    if (btn) { btn.disabled = true; btn.textContent = t('train.installing'); }
 
     this.logCard.style.display = 'flex';
     document.getElementById('train-log').innerHTML = '';
     document.getElementById('train-progress').style.display = 'none';
-    this.appendLog('pip install transformers torch datasets optimum[onnxruntime] scikit-learn pandas', 'log-line');
-    this.appendLog('正在下载安装，请耐心等待...', 'log-line');
+    this.appendLog(t('train.install_start'), 'log-line');
+    this.appendLog(t('train.install_wait'), 'log-line');
 
     const res = await apiInvoke('train:install-deps');
 
     if (res.success) {
       await this.checkEnv();
     } else {
-      this.appendLog('安装失败: ' + (res.error || '未知错误'), 'log-line');
+      this.appendLog(t('train.install_fail', { error: res.error || 'Unknown' }), 'log-line');
       document.getElementById('env-check').innerHTML +=
-        '<div style="margin-top:8px;color:var(--danger);font-size:13px">自动安装失败，请手动运行: pip install transformers torch datasets optimum[onnxruntime] scikit-learn pandas</div>';
+        `<div style="margin-top:8px;color:var(--danger);font-size:13px">${t('train.install_manual')}</div>`;
     }
 
     this.installing = false;
@@ -353,16 +360,16 @@ export default class AdminTrainView {
       const s = res.stats;
       const labeled = s.spam + s.not_spam;
       document.getElementById('train-data-stats').textContent =
-        `垃圾${s.spam} 正常${s.not_spam} 已标注${labeled} 待标注${s.unlabeled}`;
+        t('train.data_stats', { spam: s.spam, not_spam: s.not_spam, labeled, unlabeled: s.unlabeled });
 
       const btn = document.getElementById('btn-train');
       if (labeled < 10) {
         btn.disabled = true;
-        btn.textContent = '数据不足';
+        btn.textContent = t('train.data_insufficient');
         btn.style.opacity = '0.6';
       } else {
         btn.disabled = false;
-        btn.textContent = '训练';
+        btn.textContent = t('train.btn_train_text');
         btn.style.opacity = '1';
       }
     }
@@ -372,15 +379,15 @@ export default class AdminTrainView {
     const modelEl = document.getElementById('train-model-info');
     if (modelRes.loaded) {
       this.modelCard.style.display = 'block';
-      modelEl.innerHTML = '<span style="color:var(--success)">模型已加载</span>';
+      modelEl.innerHTML = `<span style="color:var(--success)">${t('train.model_loaded')}</span>`;
       if (modelRes.metrics) {
         const m = modelRes.metrics;
         modelEl.innerHTML += `
           <div class="stats-grid" style="margin-top:8px">
-            <div class="stat-card"><span class="num">${(m.eval_f1 * 100).toFixed(1)}%</span><span class="label">F1</span></div>
-            <div class="stat-card"><span class="num">${(m.eval_accuracy * 100).toFixed(1)}%</span><span class="label">准确率</span></div>
-            <div class="stat-card"><span class="num">${(m.eval_precision * 100).toFixed(1)}%</span><span class="label">精确率</span></div>
-            <div class="stat-card"><span class="num">${(m.eval_recall * 100).toFixed(1)}%</span><span class="label">召回率</span></div>
+            <div class="stat-card"><span class="num">${(m.eval_f1 * 100).toFixed(1)}%</span><span class="label">${t('train.metric_f1')}</span></div>
+            <div class="stat-card"><span class="num">${(m.eval_accuracy * 100).toFixed(1)}%</span><span class="label">${t('train.metric_accuracy')}</span></div>
+            <div class="stat-card"><span class="num">${(m.eval_precision * 100).toFixed(1)}%</span><span class="label">${t('train.metric_precision')}</span></div>
+            <div class="stat-card"><span class="num">${(m.eval_recall * 100).toFixed(1)}%</span><span class="label">${t('train.metric_recall')}</span></div>
           </div>`;
       }
     }
@@ -388,7 +395,7 @@ export default class AdminTrainView {
 
   async startTraining() {
     if (!this.pretrainedReady) {
-      showStatus('train-status', '请先下载预训练模型', false);
+      showStatus('train-status', t('train.pretrained_required'), false);
       return;
     }
     this.training = true;
@@ -397,7 +404,7 @@ export default class AdminTrainView {
     document.getElementById('train-log').innerHTML = '';
     document.getElementById('train-progress').style.display = 'block';
     document.getElementById('train-bar').style.width = '0%';
-    document.getElementById('train-progress-text').textContent = '正在启动...';
+    document.getElementById('train-progress-text').textContent = t('train.starting');
     this.logCard.style.display = 'flex';
 
     const res = await apiInvoke('train:start');
@@ -406,10 +413,10 @@ export default class AdminTrainView {
     document.getElementById('btn-cancel-train').style.display = 'none';
 
     if (res.success) {
-      showStatus('train-status', '训练完成！模型已自动加载');
+      showStatus('train-status', t('train.done'));
       this.refreshData();
     } else {
-      showStatus('train-status', '训练失败：' + res.error, false);
+      showStatus('train-status', t('train.fail', { error: res.error }), false);
     }
   }
 
@@ -418,7 +425,7 @@ export default class AdminTrainView {
     this.training = false;
     document.getElementById('btn-train').style.display = 'inline-flex';
     document.getElementById('btn-cancel-train').style.display = 'none';
-    showStatus('train-status', '已取消');
+    showStatus('train-status', t('train.cancelled'));
   }
 
   // ── Log / Progress ─────────────────────────────────────────
@@ -430,12 +437,21 @@ export default class AdminTrainView {
       const pct = Math.round((data.epoch / data.total) * 100);
       document.getElementById('train-bar').style.width = pct + '%';
       document.getElementById('train-progress-text').textContent =
-        `Epoch ${data.epoch}/${data.total}` + (data.loss != null ? ` — loss: ${data.loss.toFixed(4)}` : '');
-      this.appendLog(`Epoch ${data.epoch}/${data.total}` + (data.loss != null ? `  loss: ${data.loss.toFixed(4)}` : ''), 'log-line');
+        t('train.epoch_progress', { epoch: data.epoch, total: data.total }) +
+        (data.loss != null ? t('train.epoch_loss', { loss: data.loss.toFixed(4) }) : '');
+      this.appendLog(
+        t('train.epoch_progress', { epoch: data.epoch, total: data.total }) +
+        (data.loss != null ? t('train.epoch_loss', { loss: data.loss.toFixed(4) }) : ''),
+        'log-line');
     } else if (data.type === 'metrics') {
       const m = data.metrics;
       this.appendLog(
-        `F1: ${(m.eval_f1 * 100).toFixed(1)}%  准确率: ${(m.eval_accuracy * 100).toFixed(1)}%  精确率: ${(m.eval_precision * 100).toFixed(1)}%  召回率: ${(m.eval_recall * 100).toFixed(1)}%`,
+        t('train.metrics_format', {
+          f1: (m.eval_f1 * 100).toFixed(1),
+          accuracy: (m.eval_accuracy * 100).toFixed(1),
+          precision: (m.eval_precision * 100).toFixed(1),
+          recall: (m.eval_recall * 100).toFixed(1)
+        }),
         'log-line success'
       );
     } else if (data.type === 'log') {

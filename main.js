@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 const { initDatabase, closeDatabase } = require('./src/main/database');
 const { registerIpcHandlers } = require('./src/main/ipc-handlers');
+const { t } = require('./src/main/i18n');
 
 let mainWindow;
 
@@ -28,11 +29,11 @@ function createWindow() {
 
   mainWindow.webContents.on('context-menu', (event, params) => {
     const menu = Menu.buildFromTemplate([
-      { label: '剪切', role: 'cut', visible: params.editFlags.canCut },
-      { label: '复制', role: 'copy', visible: params.editFlags.canCopy },
-      { label: '粘贴', role: 'paste', visible: params.editFlags.canPaste },
+      { label: t('context_menu.cut'), role: 'cut', visible: params.editFlags.canCut },
+      { label: t('context_menu.copy'), role: 'copy', visible: params.editFlags.canCopy },
+      { label: t('context_menu.paste'), role: 'paste', visible: params.editFlags.canPaste },
       { type: 'separator', visible: params.editFlags.canSelectAll },
-      { label: '全选', role: 'selectAll', visible: params.editFlags.canSelectAll },
+      { label: t('context_menu.select_all'), role: 'selectAll', visible: params.editFlags.canSelectAll },
     ]);
     menu.popup();
   });

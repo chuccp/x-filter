@@ -1,4 +1,5 @@
 const cdp = require('./cdp-manager');
+const { t } = require('./i18n');
 
 let cancelFlag = false;
 
@@ -11,7 +12,7 @@ async function blockAllUsers(sourceUrl, comments, onProgress) {
 
   const targets = await cdp.getPageTargets();
   if (targets.length === 0) {
-    throw new Error('No Chrome tabs open. Open X first.');
+    throw new Error(t('block.no_tabs'));
   }
 
   const sessionId = await cdp.attachToTarget(targets[0].targetId);
@@ -58,7 +59,7 @@ async function blockSpamUsers(sourceUrl, comments, onProgress) {
   // Get an existing page or create one
   const targets = await cdp.getPageTargets();
   if (targets.length === 0) {
-    throw new Error('No Chrome tabs open. Open X first.');
+    throw new Error(t('block.no_tabs'));
   }
 
   const sessionId = await cdp.attachToTarget(targets[0].targetId);
@@ -169,7 +170,7 @@ async function blockByList(sourceUrl, comments, onProgress) {
 
   const targets = await cdp.getPageTargets();
   if (targets.length === 0) {
-    throw new Error('No Chrome tabs open. Open X first.');
+    throw new Error(t('block.no_tabs'));
   }
 
   const sessionId = await cdp.attachToTarget(targets[0].targetId);

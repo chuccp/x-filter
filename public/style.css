@@ -140,6 +140,19 @@ body.user-mode .user-hero { display: block !important; }
 }
 .status-dot.connected { background: var(--success); }
 
+.lang-select {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  max-width: 90px;
+}
+.lang-select:focus { outline: none; border-color: var(--accent); }
+
 /* Main */
 #main-content {
   flex: 1;

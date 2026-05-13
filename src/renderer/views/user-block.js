@@ -1,4 +1,5 @@
 import { showStatus, apiInvoke, el } from '../ui.js';
+import { t } from '../../i18n/index.js';
 
 const { ipcRenderer } = require('electron');
 
@@ -27,9 +28,9 @@ export default class UserBlockView {
     const el = document.getElementById('model-info');
     const btn = document.getElementById('btn-load-model');
     if (btn) {
-      btn.textContent = res.loaded ? '重新加载' : '加载模型';
+      btn.textContent = res.loaded ? t('block.btn_reload') : t('block.btn_load_model');
       btn.onclick = async () => {
-        btn.textContent = '正在加载...';
+        btn.textContent = t('block.loading_model');
         btn.disabled = true;
         await apiInvoke('model:load');
         this.checkModel();
@@ -37,20 +38,20 @@ export default class UserBlockView {
     }
     if (res.loaded) {
       el.className = 'model-status loaded';
-      el.innerHTML = '模型已加载';
+      el.innerHTML = t('block.model_loaded');
       if (res.metrics) {
         el.innerHTML += ` — F1: ${res.metrics.eval_f1?.toFixed(3) || 'N/A'}`;
       }
     } else {
       el.className = 'model-status not-loaded';
-      el.innerHTML = '模型未加载';
+      el.innerHTML = t('block.model_not_loaded');
     }
   }
 
   async start() {
     const url = document.getElementById('block-url').value.trim();
     if (!url || !url.includes('x.com')) {
-      showStatus('block-status', '请输入有效的 X.com 链接', false);
+      showStatus('block-status', t('block.invalid_url'), false);
       return;
     }
 
@@ -59,7 +60,7 @@ export default class UserBlockView {
     document.getElementById('btn-block-cancel').style.display = 'inline-flex';
     document.getElementById('block-log').innerHTML = '';
     document.getElementById('block-progress-area').style.display = 'block';
-    showStatus('block-status', '正在扫描并拉黑垃圾评论...');
+    showStatus('block-status', t('block.scanning'));
 
     const threshold = parseFloat(document.getElementById('threshold-slider').value);
     const res = await apiInvoke('block:start', url, { threshold });
@@ -71,18 +72,18 @@ export default class UserBlockView {
 
     if (res.success) {
       showStatus('block-status',
-        `完成！扫描 ${res.scanned} 条评论，发现 ${res.spam} 条垃圾，拉黑 ${res.blocked} 个用户`);
+        t('block.done', { scanned: res.scanned, spam: res.spam, blocked: res.blocked }));
     } else {
       const statusEl = document.getElementById('block-status');
       if (res.error && res.error.includes('未连接 Chrome')) {
         statusEl.className = 'status-line error';
-        statusEl.innerHTML = '未连接 Chrome '
-          + '<button class="btn btn-sm" id="btn-goto-connect" style="margin-left:8px">前往连接</button>';
+        statusEl.innerHTML = t('block.not_connected')
+          + ` <button class="btn btn-sm" id="btn-goto-connect" style="margin-left:8px">${t('block.btn_goto_connect')}</button>`;
         document.getElementById('btn-goto-connect').onclick = () => {
           document.querySelector('.nav-item[data-view="connect"]')?.click();
         };
       } else {
-        showStatus('block-status', '失败：' + res.error, false);
+        showStatus('block-status', t('block.fail', { error: res.error }), false);
       }
     }
   }
@@ -93,7 +94,7 @@ export default class UserBlockView {
     document.getElementById('btn-block-start').style.display = 'inline-flex';
     document.getElementById('btn-block-cancel').style.display = 'none';
     document.getElementById('block-progress-area').style.display = 'none';
-    showStatus('block-status', '已取消');
+    showStatus('block-status', t('block.cancelled'));
   }
 
   renderProgress(p) {
@@ -104,27 +105,27 @@ export default class UserBlockView {
       const pct = p.total > 0 ? Math.round((p.scroll / p.total) * 100) : 0;
       document.getElementById('block-bar').style.width = pct + '%';
       document.getElementById('block-progress-text').textContent =
-        `正在采集评论：${p.found} 条 / ${p.scroll} 次滚动`;
-      logLine.textContent = `📥 采集到 ${p.found} 条评论...`;
+        t('block.scraping_progress', { found: p.found, scroll: p.scroll });
+      logLine.textContent = t('block.scraping_log', { found: p.found });
     } else if (p.phase === 'predicting') {
       document.getElementById('block-bar').style.background = 'var(--accent)';
       document.getElementById('block-bar').style.width = '100%';
       document.getElementById('block-progress-text').textContent =
-        `模型预测中：${p.total} 条，${p.spam} 条疑似垃圾`;
-      logLine.textContent = `🧠 模型识别出 ${p.spam} 条垃圾评论`;
+        t('block.predicting_progress', { total: p.total, spam: p.spam });
+      logLine.textContent = t('block.predicting_log', { spam: p.spam });
       logLine.className += ' spam';
     } else if (p.phase === 'blocking') {
       const pct = p.total > 0 ? Math.round((p.scanned / p.total) * 100) : 0;
       document.getElementById('block-bar').style.background = 'var(--danger)';
       document.getElementById('block-bar').style.width = pct + '%';
       document.getElementById('block-progress-text').textContent =
-        `正在拉黑：${p.scanned}/${p.total} — 已拉黑 ${p.blocked}`;
-      logLine.textContent = `⏳ 正在处理 @${p.username}...`;
+        t('block.blocking_progress', { scanned: p.scanned, total: p.total, blocked: p.blocked });
+      logLine.textContent = t('block.blocking_log', { username: p.username });
     } else if (p.phase === 'blocked') {
-      logLine.textContent = `🚫 已拉黑 @${p.username}`;
+      logLine.textContent = t('block.blocked_log', { username: p.username });
       logLine.className += ' spam';
     } else if (p.phase === 'error') {
-      logLine.textContent = `❌ 错误：${p.error}`;
+      logLine.textContent = t('block.error_log', { error: p.error });
     }
 
     log.appendChild(logLine);

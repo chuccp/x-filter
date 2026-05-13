@@ -4,6 +4,7 @@ const db = require('../database');
 const scraper = require('../x-scraper');
 const modelManager = require('../model-manager');
 const blocker = require('../x-blocker');
+const { t } = require('../i18n');
 
 function register() {
   // ── Blocking ────────────────────────────────────────────────
@@ -14,7 +15,7 @@ function register() {
       const win = BrowserWindow.fromWebContents(event.sender);
 
       if (!modelManager.getStatus().loaded) {
-        return { success: false, error: 'Model not loaded. Load a model first or train one with train.py.' };
+        return { success: false, error: t('block.model_not_loaded') };
       }
 
       const targets = scraper.isProfileUrl(url)
@@ -32,7 +33,7 @@ function register() {
       for (let i = 0; i < targets.length; i++) {
         const postUrl = targets[i];
         const sessionId = db.createBlockSession(postUrl);
-        if (win) win.webContents.send('block:progress', { phase: 'status', text: `扫描第 ${i + 1}/${targets.length} 条帖子...` });
+        if (win) win.webContents.send('block:progress', { phase: 'status', text: t('block.scanning_post', { i: i + 1, total: targets.length }) });
 
         const { comments } = await scraper.scrapeComments(postUrl, (progress) => {
           if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress, postIndex: i + 1, postTotal: targets.length });
@@ -69,7 +70,7 @@ function register() {
         db.markMultipleBlockedInBlocklist(spamComments.map(c => c.username));
       }
 
-      if (win) win.webContents.send('block:progress', { phase: 'status', text: `全部完成: ${totalScanned} 条评论, ${totalSpam} 条垃圾, ${totalBlocked} 人拉黑` });
+      if (win) win.webContents.send('block:progress', { phase: 'status', text: t('block.all_done', { scanned: totalScanned, spam: totalSpam, blocked: totalBlocked }) });
 
       return { success: true, scanned: totalScanned, spam: totalSpam, blocked: totalBlocked, errors: totalErrors };
     } catch (e) {
@@ -168,10 +169,10 @@ function register() {
       const { dialog } = require('electron');
       const win = BrowserWindow.fromWebContents(event.sender);
       const result = await dialog.showOpenDialog(win, {
-        title: '导入拉黑名单',
+        title: t('common.dialog_import_title'),
         filters: [
-          { name: '文本文件', extensions: ['txt', 'csv'] },
-          { name: '所有文件', extensions: ['*'] },
+          { name: t('common.dialog_text_file'), extensions: ['txt', 'csv'] },
+          { name: t('common.dialog_all_files'), extensions: ['*'] },
         ],
         properties: ['openFile'],
       });
@@ -202,11 +203,11 @@ function register() {
       const { dialog } = require('electron');
       const win = BrowserWindow.fromWebContents(event.sender);
       const result = await dialog.showSaveDialog(win, {
-        title: '导出拉黑名单',
-        defaultPath: 'blocklist.txt',
+        title: t('common.dialog_export_title'),
+        defaultPath: t('common.default_filename'),
         filters: [
-          { name: '文本文件', extensions: ['txt'] },
-          { name: '所有文件', extensions: ['*'] },
+          { name: t('common.dialog_text_file'), extensions: ['txt'] },
+          { name: t('common.dialog_all_files'), extensions: ['*'] },
         ],
       });
       if (result.canceled || !result.filePath) {
@@ -225,7 +226,7 @@ function register() {
     try {
       const entries = db.getBlocklist();
       if (entries.length === 0) {
-        return { success: false, error: '拉黑名单为空，请先添加用户名' };
+        return { success: false, error: t('blocklist.empty_error') };
       }
       const blocklist = entries.map(e => e.username);
       const sessionId = db.createBlockSession(url);

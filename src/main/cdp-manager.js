@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const { t } = require('./i18n');
 
 let browserWs = null;
 let pendingCommands = new Map();
@@ -88,7 +89,7 @@ function disconnect() {
 function sendCommand(method, params) {
   return new Promise((resolve, reject) => {
     if (!isConnected()) {
-      reject(new Error('未连接 Chrome，请先在左侧「连接」页面点击连接按钮'));
+      reject(new Error(t('cdp.not_connected')));
       return;
     }
     commandId++;
@@ -97,7 +98,7 @@ function sendCommand(method, params) {
     setTimeout(() => {
       if (pendingCommands.has(commandId)) {
         pendingCommands.delete(commandId);
-        reject(new Error('操作超时: ' + method));
+        reject(new Error(t('cdp.timeout', { method })));
       }
     }, 10000);
   });
@@ -106,7 +107,7 @@ function sendCommand(method, params) {
 function sendCommandWithSession(method, params, sessionId) {
   return new Promise((resolve, reject) => {
     if (!isConnected()) {
-      reject(new Error('未连接 Chrome，请先在左侧「连接」页面点击连接按钮'));
+      reject(new Error(t('cdp.not_connected')));
       return;
     }
     commandId++;
@@ -117,7 +118,7 @@ function sendCommandWithSession(method, params, sessionId) {
     setTimeout(() => {
       if (pendingCommands.has(commandId)) {
         pendingCommands.delete(commandId);
-        reject(new Error('Command timed out: ' + method));
+        reject(new Error(t('cdp.cmd_timeout', { method })));
       }
     }, 10000);
   });
@@ -151,7 +152,7 @@ async function navigatePage(sessionId, url) {
 // Wait for page to finish loading
 function waitForPageLoad(sessionId, timeout = 15000) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Page load timeout')), timeout);
+    const timer = setTimeout(() => reject(new Error(t('cdp.page_load_timeout'))), timeout);
 
     const check = async () => {
       try {
@@ -175,7 +176,7 @@ function waitForPageLoad(sessionId, timeout = 15000) {
 // Useful for SPAs where readyState completes before content renders (e.g. X.com / React).
 function waitForSelector(sessionId, selector, timeout = 30000) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`waitForSelector timeout: "${selector}"`)), timeout);
+    const timer = setTimeout(() => reject(new Error(t('cdp.selector_timeout', { selector }))), timeout);
 
     const check = async () => {
       try {
@@ -217,7 +218,7 @@ async function evaluate(sessionId, expression) {
   );
   if (result.exceptionDetails) {
     throw new Error(
-      'Eval error: ' + (result.exceptionDetails.text || JSON.stringify(result.exceptionDetails))
+      t('cdp.eval_error', { text: result.exceptionDetails.text || JSON.stringify(result.exceptionDetails) })
     );
   }
   return result.result ? result.result.value : null;

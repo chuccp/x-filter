@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.js';
+
 export { showStatus, el, apiInvoke, updateSidebarStatus };
 
 function showStatus(elementId, message, ok = true) {
@@ -41,9 +43,9 @@ function updateSidebarStatus(connected) {
   if (!dot || !text) return;
   if (connected) {
     dot.classList.add('connected');
-    text.textContent = '已连接';
+    text.textContent = t('status.connected');
   } else {
     dot.classList.remove('connected');
-    text.textContent = '未连接';
+    text.textContent = t('status.disconnected');
   }
 }

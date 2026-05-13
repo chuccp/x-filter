@@ -1,4 +1,5 @@
 import { showStatus, apiInvoke } from '../ui.js';
+import { t } from '../../i18n/index.js';
 
 const { ipcRenderer } = require('electron');
 
@@ -17,14 +18,14 @@ export default class AdminCollectView {
       const pct = Math.round((progress.scroll / progress.total) * 100);
       document.getElementById('scrape-bar').style.width = pct + '%';
       document.getElementById('scrape-progress-text').textContent =
-        `已滚动 ${progress.scroll}/${progress.total} 次，发现 ${progress.found} 条评论`;
+        t('collect.progress', { scroll: progress.scroll, total: progress.total, found: progress.found });
     });
   }
 
   async start() {
     const url = document.getElementById('collect-url').value.trim();
     if (!url || !url.includes('x.com')) {
-      showStatus('scrape-status', '请输入有效的 X.com 链接', false);
+      showStatus('scrape-status', t('collect.invalid_url'), false);
       return;
     }
 
@@ -33,8 +34,8 @@ export default class AdminCollectView {
     document.getElementById('btn-scrape').style.display = 'none';
     document.getElementById('btn-cancel-scrape').style.display = 'inline-flex';
     document.getElementById('scrape-bar').style.width = '0%';
-    document.getElementById('scrape-progress-text').textContent = '正在连接 X...';
-    showStatus('scrape-status', '正在采集评论...');
+    document.getElementById('scrape-progress-text').textContent = t('collect.connecting');
+    showStatus('scrape-status', t('collect.scraping'));
 
     const res = await apiInvoke('scrape:start', url);
     this.scraping = false;
@@ -45,10 +46,10 @@ export default class AdminCollectView {
     if (res.success) {
       const histEl = document.getElementById('scrape-history');
       if (histEl.classList.contains('empty-state')) histEl.classList.remove('empty-state');
-      histEl.innerHTML = `<div class="log-line success">✅ 采集完成：${res.count} 条新评论（共发现 ${res.total} 条）</div>` + histEl.innerHTML;
-      showStatus('scrape-status', `采集完成！新增 ${res.count} 条评论`);
+      histEl.innerHTML = `<div class="log-line success">${t('collect.done_detail', { count: res.count, total: res.total })}</div>` + histEl.innerHTML;
+      showStatus('scrape-status', t('collect.done', { count: res.count }));
     } else {
-      showStatus('scrape-status', '采集失败：' + res.error, false);
+      showStatus('scrape-status', t('collect.fail', { error: res.error }), false);
     }
   }
 
@@ -58,6 +59,6 @@ export default class AdminCollectView {
     document.getElementById('scrape-progress').style.display = 'none';
     document.getElementById('btn-scrape').style.display = 'inline-flex';
     document.getElementById('btn-cancel-scrape').style.display = 'none';
-    showStatus('scrape-status', '已取消');
+    showStatus('scrape-status', t('collect.cancelled'));
   }
 }

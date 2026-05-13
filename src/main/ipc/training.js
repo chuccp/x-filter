@@ -4,6 +4,7 @@ const fs = require('fs');
 const { spawn, execSync } = require('child_process');
 const db = require('../database');
 const modelManager = require('../model-manager');
+const { t } = require('../i18n');
 
 let trainingProcess = null;
 let downloadProcess = null;
@@ -170,17 +171,17 @@ function register() {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const py = await getPythonCommand();
-      if (!py) return { success: false, error: 'Python not found' };
+      if (!py) return { success: false, error: t('train.python_not_found_error') };
 
       // Upgrade pip first
-      log(win, '升级 pip...\n');
+      log(win, t('train.upgrade_pip'));
       try { await runPip(py.cmd, ['install', '--upgrade', 'pip'], win); } catch (e) { /* non-fatal */ }
 
       const cuda = checkCuda();
 
       // Install torch: CUDA version from pytorch.org, CPU version from mirror
       if (cuda.available) {
-        log(win, `检测到 CUDA ${cuda.version}，安装 PyTorch ${cuda.cudaTag} 版本\n`);
+        log(win, t('train.cuda_detected', { version: cuda.version, tag: cuda.cudaTag }));
         await runPip(py.cmd, [
           'install', 'torch',
           '--index-url', `https://download.pytorch.org/whl/${cuda.cudaTag}`,
@@ -196,9 +197,9 @@ function register() {
       ];
 
       // Debug: show pip config
-      log(win, '--- pip 配置 ---\n');
-      try { await runPip(py.cmd, ['config', 'list'], win); } catch (e) { log(win, 'pip config 失败\n'); }
-      log(win, '--- 开始安装 ---\n');
+      log(win, t('train.pip_config'));
+      try { await runPip(py.cmd, ['config', 'list'], win); } catch (e) { log(win, t('train.pip_config_fail')); }
+      log(win, t('train.install_begin'));
 
       // Install each package individually so one failure doesn't block others
       const pkgs = cuda.available
@@ -207,27 +208,27 @@ function register() {
 
       let failed = [];
       for (const pkg of pkgs) {
-        log(win, `安装 ${pkg} ...`);
+        log(win, t('train.installing_pkg', { pkg }));
         let ok = false;
         for (const m of mirrors) {
           try {
             await runPip(py.cmd, [
               'install', '-i', m.url, '--trusted-host', m.host, '--verbose', pkg
             ], win);
-            log(win, `  ${pkg} 安装成功\n`);
+            log(win, t('train.install_pkg_ok', { pkg }));
             ok = true;
             break;
           } catch (e) {
-            log(win, `  ${m.url} 失败: ${e.message}\n`);
+            log(win, t('train.mirror_fail', { url: m.url, error: e.message }));
           }
         }
         if (!ok) {
-          log(win, `  ${pkg} 所有镜像均失败！\n`);
+          log(win, t('train.all_mirrors_fail', { pkg }));
           failed.push(pkg);
         }
       }
 
-      log(win, failed.length === 0 ? '全部安装完成！\n' : `以下包安装失败: ${failed.join(', ')}\n`);
+      log(win, failed.length === 0 ? t('train.install_all_done') : t('train.install_failed_list', { list: failed.join(', ') }));
       return {
         success: failed.length === 0,
         error: failed.length > 0 ? `${failed.length} 个包安装失败: ${failed.join(', ')}` : null,
@@ -243,13 +244,13 @@ function register() {
 
       const py = await getPythonCommand();
       if (!py) {
-        return { success: false, error: 'Python not found. Please install Python 3 from python.org.' };
+        return { success: false, error: t('train.python_not_found_error') };
       }
-      if (win) win.webContents.send('train:progress', { type: 'status', text: 'Python found: ' + py.version });
+      if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.python_found', { version: py.version }) });
 
       const rows = db.exportLabeledComments();
       if (rows.length < 10) {
-        return { success: false, error: `Need at least 10 labeled comments, got ${rows.length}` };
+        return { success: false, error: t('train.not_enough_data', { got: rows.length }) };
       }
 
       const csvDir = path.join(__dirname, '..', '..', '..', 'data');
@@ -259,7 +260,7 @@ function register() {
       const csvRows = rows.map(r => `"${r.text.replace(/"/g, '""')}","${(r.post_text || '').replace(/"/g, '""')}",${r.label}`).join('\n');
       fs.writeFileSync(csvPath, header + csvRows);
 
-      if (win) win.webContents.send('train:progress', { type: 'status', text: `Exported ${rows.length} labeled comments` });
+      if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.exported', { count: rows.length }) });
 
       const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
 
@@ -281,11 +282,11 @@ function register() {
         trainScript = path.join(app.getAppPath(), 'train.py');
       }
       if (!fs.existsSync(trainScript)) {
-        return { success: false, error: `train${pyVerSuffix || ''}.py not found` };
+        return { success: false, error: t('train.script_not_found') };
       }
-      if (win) win.webContents.send('train:progress', { type: 'status', text: `Using script: ${path.basename(trainScript)}` });
+      if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.using_script', { name: path.basename(trainScript) }) });
 
-      if (win) win.webContents.send('train:progress', { type: 'status', text: 'Starting training...' });
+      if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.starting_training') });
 
       // Check if pretrained model is available locally
       const pretrainedDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
@@ -343,22 +344,22 @@ function register() {
       trainingProcess = null;
 
       if (exitCode === 0) {
-        if (win) win.webContents.send('train:progress', { type: 'status', text: 'Training complete!' });
+        if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.training_complete') });
         try {
           const loadResult = await modelManager.loadModel(modelDir);
           if (win) {
             if (loadResult.loaded) {
-              win.webContents.send('train:progress', { type: 'status', text: 'Model loaded and ready for inference' });
+              win.webContents.send('train:progress', { type: 'status', text: t('train.model_loaded_ready') });
             } else {
-              win.webContents.send('train:progress', { type: 'status', text: 'Model load failed: ' + (loadResult.error || 'unknown error') });
+              win.webContents.send('train:progress', { type: 'status', text: t('train.model_load_failed', { error: loadResult.error || 'unknown error' }) });
             }
           }
         } catch (e) {
-          if (win) win.webContents.send('train:progress', { type: 'status', text: 'Model load error: ' + e.message });
+          if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.model_load_error', { error: e.message }) });
         }
         return { success: true };
       } else {
-        return { success: false, error: `Python exited with code ${exitCode}` };
+        return { success: false, error: t('train.python_exit', { code: exitCode }) };
       }
     } catch (e) {
       trainingProcess = null;
@@ -410,16 +411,16 @@ function register() {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const py = await getPythonCommand();
-      if (!py) return { success: false, error: 'Python not found' };
+      if (!py) return { success: false, error: t('train.python_not_found_error') };
 
       const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
 
       const script = path.join(projectRoot, 'download_model.py');
       if (!fs.existsSync(script)) {
-        return { success: false, error: 'download_model.py not found' };
+        return { success: false, error: t('train.download_script_not_found') };
       }
 
-      if (win) win.webContents.send('model-download:progress', { type: 'status', text: force ? '正在重新下载预训练模型...' : '正在下载预训练模型...' });
+      if (win) win.webContents.send('model-download:progress', { type: 'status', text: force ? t('train.download_status_force') : t('train.download_status') });
 
       const spawnArgs = [
         script,
@@ -468,10 +469,10 @@ function register() {
       downloadProcess = null;
 
       if (exitCode === 0) {
-        if (win) win.webContents.send('model-download:progress', { type: 'status', text: '预训练模型下载完成' });
+        if (win) win.webContents.send('model-download:progress', { type: 'status', text: t('train.download_done') });
         return { success: true, path: modelDir };
       } else {
-        return { success: false, error: `Download exited with code ${exitCode}` };
+        return { success: false, error: t('train.download_exit', { code: exitCode }) };
       }
     } catch (e) {
       downloadProcess = null;

@@ -1,4 +1,5 @@
 import { showStatus, apiInvoke } from '../ui.js';
+import { t } from '../../i18n/index.js';
 
 export default class AdminSettingsView {
   constructor() {
@@ -12,6 +13,7 @@ export default class AdminSettingsView {
     document.getElementById('setting-spam_threshold').addEventListener('input', (e) => {
       document.getElementById('setting-spam_threshold-value').textContent = e.target.value;
     });
+    document.addEventListener('language-changed', () => this.loadSettings());
   }
 
   async loadSettings() {
@@ -30,15 +32,15 @@ export default class AdminSettingsView {
     const modelRes = await apiInvoke('model:status');
     const modelEl = document.getElementById('settings-model');
     if (modelRes.loaded) {
-      modelEl.innerHTML = '<span style="color:var(--success)">模型已加载</span>';
+      modelEl.innerHTML = `<span style="color:var(--success)">${t('settings.model_loaded')}</span>`;
       if (modelRes.metrics) {
         modelEl.innerHTML += ` — F1: ${modelRes.metrics.eval_f1?.toFixed(3) || 'N/A'}`;
       }
     } else {
-      modelEl.innerHTML = `<span style="color:var(--text-muted)">模型未加载</span> — ${modelRes.error || '请先运行 train.py 训练模型'} `
-        + '<button class="btn btn-sm" id="btn-settings-load-model">加载模型</button>';
+      modelEl.innerHTML = `<span style="color:var(--text-muted)">${t('settings.model_not_loaded')}</span> — ${modelRes.error || t('settings.model_default_error')} `
+        + `<button class="btn btn-sm" id="btn-settings-load-model">${t('settings.btn_load_model')}</button>`;
       document.getElementById('btn-settings-load-model').addEventListener('click', async () => {
-        modelEl.innerHTML = '正在加载模型...';
+        modelEl.innerHTML = t('settings.loading_model');
         await apiInvoke('model:load');
         this.loadSettings();
       });
@@ -51,20 +53,20 @@ export default class AdminSettingsView {
       const el = document.getElementById('setting-' + key);
       if (el) await apiInvoke('settings:set', key, el.value);
     }
-    showStatus('settings-status', '设置已保存');
+    showStatus('settings-status', t('settings.saved'));
   }
 
   async exportCsv() {
-    showStatus('settings-status', '正在导出...');
+    showStatus('settings-status', t('settings.exporting'));
     const res = await apiInvoke('export:csv');
     if (res.success) {
       const header = 'text,post_text,label\n';
       const rows = res.rows.map(r => `"${r.text.replace(/"/g, '""')}","${(r.post_text || '').replace(/"/g, '""')}",${r.label}`).join('\n');
       const { clipboard } = require('electron');
       clipboard.writeText(header + rows);
-      showStatus('settings-status', `已复制 ${res.rows.length} 条评论到剪贴板`);
+      showStatus('settings-status', t('settings.csv_copied', { count: res.rows.length }));
     } else {
-      showStatus('settings-status', '导出失败：' + res.error, false);
+      showStatus('settings-status', t('settings.export_fail', { error: res.error }), false);
     }
   }
 }

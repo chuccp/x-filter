@@ -1,4 +1,5 @@
 import { updateSidebarStatus } from './ui.js';
+import { t, init as initI18n, loadLanguage } from '../i18n/index.js';
 
 const { ipcRenderer } = require('electron');
 
@@ -19,7 +20,23 @@ const viewMap = {
   settings: 'admin-settings',
 };
 
-function init() {
+async function init() {
+  // Initialize i18n before rendering anything
+  await initI18n();
+
+  // Expose globally for inline event handlers in HTML
+  window.t = t;
+  window.loadLanguage = loadLanguage;
+
+  // Language selector
+  const langSelect = document.getElementById('lang-select');
+  if (langSelect) {
+    langSelect.value = document.documentElement.lang || 'zh-CN';
+    langSelect.addEventListener('change', () => {
+      loadLanguage(langSelect.value);
+    });
+  }
+
   // Sidebar nav clicks
   document.querySelectorAll('.nav-item[data-view]').forEach(item => {
     item.addEventListener('click', () => {

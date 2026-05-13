@@ -1,4 +1,5 @@
 import { showStatus, apiInvoke, el } from '../ui.js';
+import { t } from '../../i18n/index.js';
 
 export default class AdminLabelView {
   constructor() {
@@ -14,10 +15,10 @@ export default class AdminLabelView {
     const container = document.getElementById('label-filters');
     container.innerHTML = '';
     const filters = [
-      { key: 'unlabeled', label: '未标注' },
-      { key: 'all', label: '全部' },
-      { key: 'spam', label: '垃圾' },
-      { key: 'not-spam', label: '正常' },
+      { key: 'unlabeled', label: t('label.filter_unlabeled') },
+      { key: 'all', label: t('label.filter_all') },
+      { key: 'spam', label: t('label.filter_spam') },
+      { key: 'not-spam', label: t('label.filter_normal') },
     ];
     for (const f of filters) {
       const btn = el('button', {
@@ -38,6 +39,11 @@ export default class AdminLabelView {
     document.getElementById('btn-batch-spam').addEventListener('click', () => this.batchLabel(1));
     document.getElementById('btn-batch-not-spam').addEventListener('click', () => this.batchLabel(0));
     document.getElementById('btn-refresh-labels').addEventListener('click', () => this.loadComments());
+
+    document.addEventListener('language-changed', () => {
+      this.buildFilterBar();
+      this.renderStats();
+    });
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
@@ -67,14 +73,18 @@ export default class AdminLabelView {
       this.currentIndex = 0;
       this.render();
     }
+    await this.renderStats();
+  }
+
+  async renderStats() {
     const statsRes = await apiInvoke('labels:stats');
     if (statsRes.success) {
       const s = statsRes.stats;
       document.getElementById('label-stats').innerHTML =
-        `<span>总计 <strong>${s.total}</strong></span>` +
-        `<span>垃圾 <strong style="color:var(--danger)">${s.spam}</strong></span>` +
-        `<span>正常 <strong style="color:var(--success)">${s.not_spam}</strong></span>` +
-        `<span>待标注 <strong style="color:var(--accent)">${s.unlabeled}</strong></span>`;
+        `<span>${t('label.stats_total')} <strong>${s.total}</strong></span>` +
+        `<span>${t('label.stats_spam')} <strong style="color:var(--danger)">${s.spam}</strong></span>` +
+        `<span>${t('label.stats_normal')} <strong style="color:var(--success)">${s.not_spam}</strong></span>` +
+        `<span>${t('label.stats_unlabeled')} <strong style="color:var(--accent)">${s.unlabeled}</strong></span>`;
     }
   }
 
@@ -93,7 +103,7 @@ export default class AdminLabelView {
 
     const c = this.comments[this.currentIndex];
     document.getElementById('comment-index').textContent =
-      `${this.currentIndex + 1} / ${this.comments.length}`;
+      t('label.index', { current: this.currentIndex + 1, total: this.comments.length });
     document.getElementById('comment-username').textContent = '@' + c.username;
     document.getElementById('comment-text').textContent = c.text;
 
@@ -107,7 +117,7 @@ export default class AdminLabelView {
           id: 'post-text',
           style: 'background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--text-muted);max-height:100px;overflow-y:auto'
         });
-        const postLabel = el('div', { style: 'font-size:11px;color:var(--text-dim);margin-bottom:4px' }, '📌 原文');
+        const postLabel = el('div', { style: 'font-size:11px;color:var(--text-dim);margin-bottom:4px' }, t('label.post_context'));
         const postText = el('div', {}, c.post_text);
         postDiv.appendChild(postLabel);
         postDiv.appendChild(postText);
@@ -146,15 +156,7 @@ export default class AdminLabelView {
       this.comments.splice(this.currentIndex, 1);
       if (this.currentIndex >= this.comments.length) this.currentIndex = Math.max(0, this.comments.length - 1);
     }
-    const statsRes = await apiInvoke('labels:stats');
-    if (statsRes.success) {
-      const s = statsRes.stats;
-      document.getElementById('label-stats').innerHTML =
-        `<span>总计 <strong>${s.total}</strong></span>` +
-        `<span>垃圾 <strong style="color:var(--danger)">${s.spam}</strong></span>` +
-        `<span>正常 <strong style="color:var(--success)">${s.not_spam}</strong></span>` +
-        `<span>待标注 <strong style="color:var(--accent)">${s.unlabeled}</strong></span>`;
-    }
+    await this.renderStats();
     this.render();
   }
 
@@ -172,13 +174,6 @@ export default class AdminLabelView {
     for (const c of this.comments) c.label = label;
     if (this.filter === 'unlabeled') { this.comments = []; this.currentIndex = 0; }
     this.render();
-    const s = await apiInvoke('labels:stats');
-    if (s.success) {
-      document.getElementById('label-stats').innerHTML =
-        `<span>总计 <strong>${s.stats.total}</strong></span>` +
-        `<span>垃圾 <strong style="color:var(--danger)">${s.stats.spam}</strong></span>` +
-        `<span>正常 <strong style="color:var(--success)">${s.stats.not_spam}</strong></span>` +
-        `<span>待标注 <strong style="color:var(--accent)">${s.stats.unlabeled}</strong></span>`;
-    }
+    await this.renderStats();
   }
 }

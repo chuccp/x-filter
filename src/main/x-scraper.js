@@ -1,4 +1,5 @@
 const cdp = require('./cdp-manager');
+const { t } = require('./i18n');
 
 let cancelFlag = false;
 
@@ -120,7 +121,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
       const hasLogin = await cdp.evaluate(sessionId,
         'document.body.innerText.includes("Sign in") || document.body.innerText.includes("Log in")'
       );
-      if (hasLogin) throw new Error('X requires login. Please log in to X in Chrome first.');
+      if (hasLogin) throw new Error(t('scrape.login_required'));
     }
 
     // Scroll and collect

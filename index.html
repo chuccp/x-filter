@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>x-filter — X 评论过滤器</title>
+  <title data-i18n="app.title">x-filter — X 评论过滤器</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -13,35 +13,35 @@
   <aside id="sidebar">
     <div class="brand">
       <span class="brand-icon">🛡</span>
-      <span class="brand-text">x-filter</span>
-      <span class="brand-sub">X 评论过滤器</span>
+      <span class="brand-text" data-i18n="app.brand">x-filter</span>
+      <span class="brand-sub" data-i18n="app.subtitle">X 评论过滤器</span>
     </div>
 
     <div class="role-toggle">
-      <button class="role-btn active" data-role="admin">模型训练</button>
-      <button class="role-btn" data-role="user">拉黑操作</button>
+      <button class="role-btn active" data-role="admin" data-i18n="app.role_admin">模型训练</button>
+      <button class="role-btn" data-role="user" data-i18n="app.role_user">拉黑操作</button>
     </div>
 
     <nav id="nav-menu">
       <a class="nav-item active" data-view="connect">
         <span class="nav-icon">⚡</span>
-        <span class="nav-label">连接 Chrome</span>
+        <span class="nav-label" data-i18n="nav.connect">连接 Chrome</span>
       </a>
       <a class="nav-item admin-only" data-view="collect">
         <span class="nav-icon">📥</span>
-        <span class="nav-label">采集评论</span>
+        <span class="nav-label" data-i18n="nav.collect">采集评论</span>
       </a>
       <a class="nav-item admin-only" data-view="label">
         <span class="nav-icon">🏷</span>
-        <span class="nav-label">标注评论</span>
+        <span class="nav-label" data-i18n="nav.label">标注评论</span>
       </a>
       <a class="nav-item admin-only" data-view="export">
         <span class="nav-icon">📋</span>
-        <span class="nav-label">训练数据</span>
+        <span class="nav-label" data-i18n="nav.data">训练数据</span>
       </a>
       <a class="nav-item admin-only" data-view="train">
         <span class="nav-icon">🧠</span>
-        <span class="nav-label">训练模型</span>
+        <span class="nav-label" data-i18n="nav.train">训练模型</span>
       </a>
     </nav>
 
@@ -50,21 +50,27 @@
     <nav>
       <a class="nav-item" data-view="block">
         <span class="nav-icon">🛡</span>
-        <span class="nav-label">自动拉黑</span>
+        <span class="nav-label" data-i18n="nav.block">自动拉黑</span>
       </a>
       <a class="nav-item" data-view="blocklist">
         <span class="nav-icon">📋</span>
-        <span class="nav-label">名单拉黑</span>
+        <span class="nav-label" data-i18n="nav.blocklist">名单拉黑</span>
       </a>
       <a class="nav-item admin-only" data-view="settings">
         <span class="nav-icon">⚙</span>
-        <span class="nav-label">设置</span>
+        <span class="nav-label" data-i18n="nav.settings">设置</span>
       </a>
     </nav>
 
     <div class="sidebar-footer">
       <span class="status-dot" id="sidebar-status-dot"></span>
       <span class="status-text" id="sidebar-status-text">未连接</span>
+      <select id="lang-select" class="lang-select">
+        <option value="zh-CN" data-i18n="lang.zh_CN">简体中文</option>
+        <option value="zh-TW" data-i18n="lang.zh_TW">繁體中文</option>
+        <option value="ja" data-i18n="lang.ja">日本語</option>
+        <option value="en" data-i18n="lang.en">English</option>
+      </select>
     </div>
   </aside>
 
@@ -73,48 +79,48 @@
     <!-- View: Connect -->
     <section id="view-connect" class="view active">
       <div class="hero-card admin-hero">
-        <h1>欢迎使用 x-filter</h1>
-        <p>三步搞定 X（Twitter）上的垃圾评论：采集 → 标注 → 自动拉黑</p>
+        <h1 data-i18n="connect.welcome_title">欢迎使用 x-filter</h1>
+        <p data-i18n="connect.welcome_desc">三步搞定 X（Twitter）上的垃圾评论：采集 → 标注 → 自动拉黑</p>
         <div class="hero-steps">
-          <div class="hero-step"><span class="step-num">1</span>采集评论</div>
+          <div class="hero-step"><span class="step-num">1</span><span data-i18n="connect.step1">采集评论</span></div>
           <div class="hero-step-arrow">→</div>
-          <div class="hero-step"><span class="step-num">2</span>标注垃圾</div>
+          <div class="hero-step"><span class="step-num">2</span><span data-i18n="connect.step2">标注垃圾</span></div>
           <div class="hero-step-arrow">→</div>
-          <div class="hero-step"><span class="step-num">3</span>训练模型</div>
+          <div class="hero-step"><span class="step-num">3</span><span data-i18n="connect.step3">训练模型</span></div>
           <div class="hero-step-arrow">→</div>
-          <div class="hero-step"><span class="step-num">4</span>自动拉黑</div>
+          <div class="hero-step"><span class="step-num">4</span><span data-i18n="connect.step4">自动拉黑</span></div>
         </div>
       </div>
       <div class="hero-card user-hero" style="display:none">
-        <h1>🛡 自动拉黑工具</h1>
-        <p>连接 Chrome，粘贴帖子链接，一键扫描并拉黑垃圾评论发送者</p>
+        <h1 data-i18n="connect.user_title">🛡 自动拉黑工具</h1>
+        <p data-i18n="connect.user_desc">连接 Chrome，粘贴帖子链接，一键扫描并拉黑垃圾评论发送者</p>
       </div>
 
       <div class="card">
         <div class="card-header">
           <span class="card-icon">⚡</span>
-          <h2>连接 Chrome 浏览器</h2>
+          <h2 data-i18n="connect.card_title">连接 Chrome 浏览器</h2>
         </div>
         <div class="card-body">
-          <p class="help-text">请先在 Chrome 浏览器中开启远程调试，然后点击连接按钮。</p>
+          <p class="help-text" data-i18n="connect.help">请先在 Chrome 浏览器中开启远程调试，然后点击连接按钮。</p>
           <div class="helper-steps">
-            <div class="helper-step"><span class="step-num">1</span> 打开 Chrome 浏览器</div>
-            <div class="helper-step"><span class="step-num">2</span> 地址栏输入 <code>chrome://inspect/#remote-debugging</code> 并回车</div>
-            <div class="helper-step"><span class="step-num">3</span> 打开 <strong>Allow remote debugging</strong> 开关</div>
-            <div class="helper-step"><span class="step-num">4</span> 确认下方显示 <code>127.0.0.1:9222</code> 后点连接</div>
+            <div class="helper-step"><span class="step-num">1</span> <span data-i18n="connect.guide1">打开 Chrome 浏览器</span></div>
+            <div class="helper-step"><span class="step-num">2</span> <span data-i18n="connect.guide2">地址栏输入</span> <code>chrome://inspect/#remote-debugging</code> <span data-i18n="connect.guide2_enter">并回车</span></div>
+            <div class="helper-step"><span class="step-num">3</span> <span data-i18n="connect.guide3">打开</span> <strong data-i18n="connect.guide3_switch">开关</strong></div>
+            <div class="helper-step"><span class="step-num">4</span> <span data-i18n="connect.guide4">确认下方显示</span> <code>127.0.0.1:9222</code> <span data-i18n="connect.guide4_click">后点连接</span></div>
           </div>
           <div class="form-row">
             <div class="form-group" style="flex:3">
-              <label>地址</label>
+              <label data-i18n="connect.host_label">地址</label>
               <input type="text" id="host" value="127.0.0.1">
             </div>
             <div class="form-group" style="flex:1">
-              <label>端口</label>
+              <label data-i18n="connect.port_label">端口</label>
               <input type="number" id="port" value="9222">
             </div>
           </div>
-          <button class="btn" id="btn-connect">连接 Chrome</button>
-          <button class="btn btn-outline" id="btn-disconnect" style="display:none">断开连接</button>
+          <button class="btn" id="btn-connect" data-i18n="connect.btn_connect">连接 Chrome</button>
+          <button class="btn btn-outline" id="btn-disconnect" style="display:none" data-i18n="connect.btn_disconnect">断开连接</button>
           <div class="status-line" id="conn-status"></div>
         </div>
       </div>
@@ -125,18 +131,18 @@
       <div class="card">
         <div class="card-header">
           <span class="card-icon">📥</span>
-          <h2>采集 X 评论</h2>
-          <span class="step-badge">第 1 步</span>
+          <h2 data-i18n="collect.title">采集 X 评论</h2>
+          <span class="step-badge" data-i18n="collect.badge">第 1 步</span>
         </div>
         <div class="card-body">
-          <p class="help-text">粘贴一条 X（Twitter）帖子的链接，采集下面的回复评论。</p>
+          <p class="help-text" data-i18n="collect.help">粘贴一条 X（Twitter）帖子的链接，采集下面的回复评论。</p>
           <div class="form-group">
-            <label>帖子链接</label>
-            <input type="text" id="collect-url" placeholder="https://x.com/用户名/status/123456">
+            <label data-i18n="collect.url_label">帖子链接</label>
+            <input type="text" id="collect-url" data-i18n-placeholder="collect.url_placeholder" placeholder="https://x.com/用户名/status/123456">
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" id="btn-scrape">开始采集</button>
-            <button class="btn btn-outline" id="btn-cancel-scrape" style="display:none">取消</button>
+            <button class="btn btn-primary" id="btn-scrape" data-i18n="collect.btn_start">开始采集</button>
+            <button class="btn btn-outline" id="btn-cancel-scrape" style="display:none" data-i18n="collect.btn_cancel">取消</button>
           </div>
           <div class="progress-bar" id="scrape-progress" style="display:none">
             <div class="progress-fill" id="scrape-bar"></div>
@@ -149,10 +155,10 @@
       <div class="card">
         <div class="card-header">
           <span class="card-icon">📋</span>
-          <h2>采集记录</h2>
+          <h2 data-i18n="collect.history_title">采集记录</h2>
         </div>
         <div class="card-body">
-          <div id="scrape-history" class="empty-state">还没有采集过评论。输入链接开始采集吧！</div>
+          <div id="scrape-history" class="empty-state" data-i18n="collect.empty">还没有采集过评论。输入链接开始采集吧！</div>
         </div>
       </div>
     </section>
@@ -162,9 +168,9 @@
       <div class="card">
         <div class="card-header">
           <span class="card-icon">🏷</span>
-          <h2>标注评论</h2>
-          <span class="step-badge">第 2 步</span>
-          <button class="btn btn-sm btn-outline" id="btn-refresh-labels" style="margin-left:auto">🔄 刷新</button>
+          <h2 data-i18n="label.title">标注评论</h2>
+          <span class="step-badge" data-i18n="label.badge">第 2 步</span>
+          <button class="btn btn-sm btn-outline" id="btn-refresh-labels" style="margin-left:auto" data-i18n="label.btn_refresh">🔄 刷新</button>
         </div>
         <div class="card-body">
           <div class="filter-bar" id="label-filters"></div>
@@ -181,33 +187,33 @@
             </div>
             <div class="comment-body" id="comment-text"></div>
             <div class="comment-actions">
-              <button class="btn btn-danger" id="btn-spam">垃圾评论</button>
-              <button class="btn btn-success" id="btn-not-spam">正常评论</button>
-              <button class="btn btn-outline" id="btn-skip">跳过 →</button>
+              <button class="btn btn-danger" id="btn-spam" data-i18n="label.btn_spam">垃圾评论</button>
+              <button class="btn btn-success" id="btn-not-spam" data-i18n="label.btn_not_spam">正常评论</button>
+              <button class="btn btn-outline" id="btn-skip" data-i18n="label.btn_skip">跳过 →</button>
             </div>
-            <div class="shortcut-hint">键盘快捷键：S = 垃圾 · N = 正常 · → = 跳过 · ← = 返回</div>
+            <div class="shortcut-hint" data-i18n="label.shortcuts">键盘快捷键：S = 垃圾 · N = 正常 · → = 跳过 · ← = 返回</div>
           </div>
           <div class="nav-buttons">
-            <button class="btn btn-sm" id="btn-prev">← 上一条</button>
-            <button class="btn btn-sm" id="btn-next">下一条 →</button>
+            <button class="btn btn-sm" id="btn-prev" data-i18n="label.btn_prev">← 上一条</button>
+            <button class="btn btn-sm" id="btn-next" data-i18n="label.btn_next">下一条 →</button>
           </div>
         </div>
       </div>
 
       <div class="card" id="label-empty">
         <div class="card-body">
-          <div class="empty-state">还没有评论可以标注。先去「采集评论」吧！</div>
+          <div class="empty-state" data-i18n="label.empty">还没有评论可以标注。先去「采集评论」吧！</div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
           <span class="card-icon">⚡</span>
-          <h2>批量操作</h2>
+          <h2 data-i18n="label.batch_title">批量操作</h2>
         </div>
         <div class="card-body">
-          <button class="btn btn-danger btn-sm" id="btn-batch-spam">全部标为垃圾</button>
-          <button class="btn btn-success btn-sm" id="btn-batch-not-spam">全部标为正常</button>
+          <button class="btn btn-danger btn-sm" id="btn-batch-spam" data-i18n="label.batch_all_spam">全部标为垃圾</button>
+          <button class="btn btn-success btn-sm" id="btn-batch-not-spam" data-i18n="label.batch_all_not_spam">全部标为正常</button>
         </div>
       </div>
     </section>
@@ -217,24 +223,24 @@
       <div class="card">
         <div class="card-header" style="padding:4px 16px">
           <span class="card-icon">📋</span>
-          <h2>训练数据查看</h2>
+          <h2 data-i18n="export.title">训练数据查看</h2>
           <span id="export-stats" style="margin-left:12px;font-size:12px;color:var(--text-muted)"></span>
-          <button class="btn btn-outline btn-sm" id="btn-refresh-data" style="margin-left:auto">🔄 刷新</button>
+          <button class="btn btn-outline btn-sm" id="btn-refresh-data" style="margin-left:auto" data-i18n="export.btn_refresh">🔄 刷新</button>
         </div>
       </div>
 
       <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
         <div class="card-header">
           <span class="card-icon">🔍</span>
-          <h2>数据列表</h2>
+          <h2 data-i18n="export.data_title">数据列表</h2>
           <div class="filter-bar" id="data-filters" style="margin-left:auto"></div>
         </div>
         <div class="card-body" style="padding:0;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
           <div class="data-table-wrap" style="flex:1;max-height:none;overflow-y:auto" id="data-table-container">
-            <div class="empty-state" id="data-empty">还没有标注数据。先去「标注评论」吧！</div>
+            <div class="empty-state" id="data-empty" data-i18n="export.empty">还没有标注数据。先去「标注评论」吧！</div>
           </div>
           <div class="btn-row" style="margin-top:12px;padding:0 16px 14px">
-            <button class="btn btn-outline btn-sm" id="btn-copy-csv">复制 CSV 到剪贴板</button>
+            <button class="btn btn-outline btn-sm" id="btn-copy-csv" data-i18n="export.btn_copy">复制 CSV 到剪贴板</button>
           </div>
         </div>
       </div>
@@ -248,27 +254,27 @@
       <div class="card">
         <div class="card-header">
           <span class="card-icon">🛡</span>
-          <h2>自动识别并拉黑</h2>
+          <h2 data-i18n="block.title">自动识别并拉黑</h2>
         </div>
         <div class="card-body">
           <div class="form-group">
-            <label>帖子/主页链接</label>
+            <label data-i18n="block.url_label">帖子/主页链接</label>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
               <div class="model-status" id="model-info" style="white-space:nowrap">检查中...</div>
-              <button class="btn btn-sm" id="btn-load-model" style="white-space:nowrap">加载模型</button>
+              <button class="btn btn-sm" id="btn-load-model" style="white-space:nowrap" data-i18n="block.btn_load_model">加载模型</button>
             </div>
-            <input type="text" id="block-url" placeholder="帖子 https://x.com/user/status/123 或 主页 https://x.com/user">
+            <input type="text" id="block-url" data-i18n-placeholder="block.url_placeholder" placeholder="帖子 https://x.com/user/status/123 或 主页 https://x.com/user">
           </div>
           <div class="form-group">
-            <label>垃圾判定阈值：<strong id="threshold-value">0.8</strong></label>
+            <label><span data-i18n="block.threshold_label">垃圾判定阈值：</span><strong id="threshold-value">0.8</strong></label>
             <input type="range" id="threshold-slider" min="0.5" max="0.95" step="0.05" value="0.8">
             <div class="range-labels">
-              <span>宽松</span><span>严格</span>
+              <span data-i18n="block.threshold_loose">宽松</span><span data-i18n="block.threshold_strict">严格</span>
             </div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-danger" id="btn-block-start">开始扫描并拉黑</button>
-            <button class="btn btn-outline" id="btn-block-cancel" style="display:none">取消</button>
+            <button class="btn btn-danger" id="btn-block-start" data-i18n="block.btn_start">开始扫描并拉黑</button>
+            <button class="btn btn-outline" id="btn-block-cancel" style="display:none" data-i18n="block.btn_cancel">取消</button>
           </div>
           <div class="progress-bar" id="block-progress-area" style="display:none">
             <div class="progress-fill" id="block-bar"></div>
@@ -281,10 +287,10 @@
       <div class="card">
         <div class="card-header">
           <span class="card-icon">📜</span>
-          <h2>运行日志</h2>
+          <h2 data-i18n="block.log_title">运行日志</h2>
         </div>
         <div class="card-body">
-          <div id="block-log" class="log-container">点击「开始扫描并拉黑」后日志会出现在这里</div>
+          <div id="block-log" class="log-container" data-i18n="block.log_placeholder">点击「开始扫描并拉黑」后日志会出现在这里</div>
         </div>
       </div>
     </section>
@@ -294,19 +300,19 @@
       <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
         <div class="card-header">
           <span class="card-icon">📋</span>
-          <h2>拉黑名单</h2>
+          <h2 data-i18n="blocklist.title">拉黑名单</h2>
           <span class="blocklist-count" id="blocklist-count">0 人</span>
           <div class="btn-row" style="margin-left:auto">
-            <button class="btn btn-sm" id="btn-blocklist-add">添加</button>
-            <button class="btn btn-sm btn-outline" id="btn-blocklist-import">导入</button>
-            <button class="btn btn-sm btn-outline" id="btn-blocklist-export">导出</button>
-            <button class="btn btn-sm btn-danger" id="btn-blocklist-block">开始拉黑</button>
-            <button class="btn btn-sm btn-outline" id="btn-blocklist-clear">清空</button>
+            <button class="btn btn-sm" id="btn-blocklist-add" data-i18n="blocklist.btn_add">添加</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-import" data-i18n="blocklist.btn_import">导入</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-export" data-i18n="blocklist.btn_export">导出</button>
+            <button class="btn btn-sm btn-danger" id="btn-blocklist-block" data-i18n="blocklist.btn_block">开始拉黑</button>
+            <button class="btn btn-sm btn-outline" id="btn-blocklist-clear" data-i18n="blocklist.btn_clear">清空</button>
           </div>
         </div>
         <div class="card-body" style="padding:0;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
           <div class="data-table-wrap" style="flex:1;max-height:none;overflow-y:auto" id="blocklist-table-container">
-            <div class="empty-state" id="blocklist-empty">名单为空，请添加或导入用户名</div>
+            <div class="empty-state" id="blocklist-empty" data-i18n="blocklist.empty">名单为空，请添加或导入用户名</div>
           </div>
         </div>
       </div>
@@ -315,18 +321,18 @@
       <div class="modal-overlay" id="modal-add" style="display:none">
         <div class="modal-box">
           <div class="modal-header">
-            <h3>添加用户</h3>
+            <h3 data-i18n="blocklist.modal_add_title">添加用户</h3>
             <button class="modal-close" data-close="modal-add">&times;</button>
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label>用户名</label>
-              <input type="text" id="modal-add-input" placeholder="输入用户名（如 elonmusk）">
+              <label data-i18n="blocklist.col_username">用户名</label>
+              <input type="text" id="modal-add-input" data-i18n-placeholder="blocklist.modal_add_placeholder" placeholder="输入用户名（如 elonmusk）">
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-outline btn-sm" data-close="modal-add">取消</button>
-            <button class="btn btn-sm" id="modal-add-confirm">添加</button>
+            <button class="btn btn-outline btn-sm" data-close="modal-add" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-sm" id="modal-add-confirm" data-i18n="blocklist.modal_add_btn">添加</button>
           </div>
         </div>
       </div>
@@ -334,23 +340,23 @@
       <div class="modal-overlay" id="modal-import" style="display:none">
         <div class="modal-box">
           <div class="modal-header">
-            <h3>导入名单</h3>
+            <h3 data-i18n="blocklist.modal_import_title">导入名单</h3>
             <button class="modal-close" data-close="modal-import">&times;</button>
           </div>
           <div class="modal-body">
-            <p class="help-text">从文件导入，每行一个用户名，或用逗号分隔。</p>
+            <p class="help-text" data-i18n="blocklist.modal_import_help">从文件导入，每行一个用户名，或用逗号分隔。</p>
             <div class="btn-row">
-              <button class="btn btn-outline btn-sm" id="modal-import-file">选择文件...</button>
+              <button class="btn btn-outline btn-sm" id="modal-import-file" data-i18n="blocklist.modal_import_file">选择文件...</button>
               <span class="status-line" id="modal-import-path" style="margin-top:0"></span>
             </div>
             <div class="form-group" style="margin-top:12px">
-              <label>或粘贴到下方</label>
-              <textarea id="modal-import-text" rows="6" placeholder="每行一个用户名或用逗号分隔"></textarea>
+              <label data-i18n="blocklist.modal_import_label">或粘贴到下方</label>
+              <textarea id="modal-import-text" rows="6" data-i18n-placeholder="blocklist.modal_import_placeholder" placeholder="每行一个用户名或用逗号分隔"></textarea>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-outline btn-sm" data-close="modal-import">取消</button>
-            <button class="btn btn-sm" id="modal-import-confirm">导入</button>
+            <button class="btn btn-outline btn-sm" data-close="modal-import" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-sm" id="modal-import-confirm" data-i18n="blocklist.modal_import_btn">导入</button>
           </div>
         </div>
       </div>
@@ -358,13 +364,13 @@
       <div class="modal-overlay" id="modal-block" style="display:none">
         <div class="modal-box" style="max-width:520px">
           <div class="modal-header">
-            <h3>根据名单拉黑</h3>
+            <h3 data-i18n="blocklist.modal_block_title">根据名单拉黑</h3>
             <button class="modal-close" data-close="modal-block">&times;</button>
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label>帖子链接</label>
-              <input type="text" id="modal-block-url" placeholder="https://x.com/用户名/status/123456">
+              <label data-i18n="blocklist.modal_block_url_label">帖子链接</label>
+              <input type="text" id="modal-block-url" data-i18n-placeholder="blocklist.modal_block_url_placeholder" placeholder="https://x.com/用户名/status/123456">
             </div>
             <div class="progress-bar" id="modal-block-progress" style="display:none">
               <div class="progress-fill" id="modal-block-bar"></div>
@@ -374,9 +380,9 @@
             <div class="status-line" id="modal-block-status"></div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-outline btn-sm" data-close="modal-block" id="modal-block-close-btn">关闭</button>
-            <button class="btn btn-outline btn-sm" id="modal-block-cancel-btn" style="display:none">取消</button>
-            <button class="btn btn-danger btn-sm" id="modal-block-start">开始拉黑</button>
+            <button class="btn btn-outline btn-sm" data-close="modal-block" id="modal-block-close-btn" data-i18n="blocklist.modal_block_close">关闭</button>
+            <button class="btn btn-outline btn-sm" id="modal-block-cancel-btn" style="display:none" data-i18n="blocklist.modal_block_cancel">取消</button>
+            <button class="btn btn-danger btn-sm" id="modal-block-start" data-i18n="blocklist.modal_block_btn">开始拉黑</button>
           </div>
         </div>
       </div>
@@ -387,23 +393,23 @@
       <div class="card">
         <div class="card-header">
           <span class="card-icon">⚙</span>
-          <h2>设置</h2>
+          <h2 data-i18n="settings.title">设置</h2>
         </div>
         <div class="card-body">
           <div class="form-group">
-            <label>采集参数 — 最大滚动次数</label>
+            <label data-i18n="settings.scroll_label">采集参数 — 最大滚动次数</label>
             <input type="number" id="setting-max_scroll" value="50">
           </div>
           <div class="form-group">
-            <label>滚动间隔 (毫秒)</label>
+            <label data-i18n="settings.scroll_delay_label">滚动间隔 (毫秒)</label>
             <input type="number" id="setting-scroll_delay" value="500">
           </div>
           <div class="form-group">
-            <label>垃圾判定阈值</label>
+            <label data-i18n="settings.threshold_label">垃圾判定阈值</label>
             <input type="range" id="setting-spam_threshold" min="0.5" max="0.95" step="0.05" value="0.8">
             <span id="setting-spam_threshold-value" style="font-size:13px;color:#94a3b8">0.8</span>
           </div>
-          <button class="btn btn-primary" id="btn-save-settings">保存设置</button>
+          <button class="btn btn-primary" id="btn-save-settings" data-i18n="settings.btn_save">保存设置</button>
           <div class="status-line" id="settings-status"></div>
         </div>
       </div>
@@ -411,11 +417,11 @@
       <div class="card">
         <div class="card-header">
           <span class="card-icon">🧠</span>
-          <h2>模型信息</h2>
+          <h2 data-i18n="settings.model_title">模型信息</h2>
         </div>
         <div class="card-body">
           <div id="settings-model">检查中...</div>
-          <button class="btn btn-outline btn-sm" id="btn-settings-export" style="margin-top:12px">导出标注数据到剪贴板</button>
+          <button class="btn btn-outline btn-sm" id="btn-settings-export" style="margin-top:12px" data-i18n="common.export_btn">导出标注数据到剪贴板</button>
         </div>
       </div>
     </section>
