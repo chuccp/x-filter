@@ -105,16 +105,19 @@ async function getPythonCommand() {
 function checkCuda() {
   try {
     const out = execSync('nvidia-smi', { encoding: 'utf-8', shell: true, stdio: 'pipe' });
-    // Parse CUDA version from line like "CUDA Version: 12.4"
+    // Parse CUDA version from line like "CUDA Version: 13.1"
     const m = out.match(/CUDA Version:\s*(\d+\.\d+)/i);
     if (m) {
       const ver = m[1];
-      // Map CUDA version to PyTorch index: 12.x → cu124, 11.x → cu118
       const major = parseInt(ver.split('.')[0], 10);
       const minor = parseInt(ver.split('.')[1] || '0', 10);
       let cudaTag;
-      if (major >= 12) cudaTag = minor >= 4 ? 'cu124' : 'cu121';
-      else if (major >= 11) cudaTag = 'cu118';
+      if (major >= 13) cudaTag = 'cu130';
+      else if (major >= 12) {
+        if (minor >= 8) cudaTag = 'cu128';
+        else if (minor >= 4) cudaTag = 'cu124';
+        else cudaTag = 'cu121';
+      } else if (major >= 11) cudaTag = 'cu118';
       else return { available: false };
       return { available: true, version: ver, cudaTag };
     }
@@ -139,6 +142,7 @@ function register() {
     }
 
     if (result.python) {
+      // Basic package check
       const pkgCheck = spawn(py.cmd, ['-c',
         'import transformers, torch, datasets, sklearn, pandas; print("all ok")'
       ]);
@@ -148,6 +152,20 @@ function register() {
       const code = await new Promise(r => pkgCheck.on('close', r));
       result.packages.all = code === 0 && out.includes('all ok');
       result.packages.detail = out.trim();
+
+      // Verify torch CUDA support
+      if (code === 0) {
+        const torchCudaCheck = spawn(py.cmd, ['-c',
+          'import torch; print(f"torch_version:{torch.__version__}"); print(f"cuda_available:{torch.cuda.is_available()}"); print(f"cuda_devices:{torch.cuda.device_count()}")'
+        ]);
+        let torchOut = '';
+        torchCudaCheck.stdout.on('data', d => torchOut += d.toString());
+        torchCudaCheck.stderr.on('data', d => torchOut += d.toString());
+        await new Promise(r => torchCudaCheck.on('close', r));
+        result.packages.torchVersion = (torchOut.match(/torch_version:(.+)/) || [])[1] || 'unknown';
+        result.packages.torchCuda = torchOut.includes('cuda_available:True');
+        result.packages.torchCudaDevices = parseInt((torchOut.match(/cuda_devices:(\d+)/) || [])[1] || '0', 10);
+      }
     }
 
     return { success: true, env: result };
@@ -180,10 +198,12 @@ function register() {
       const cuda = checkCuda();
 
       // Install torch: CUDA version from pytorch.org, CPU version from mirror
+      // Force reinstall to ensure CUDA version replaces any existing CPU-only torch
       if (cuda.available) {
         log(win, t('train.cuda_detected', { version: cuda.version, tag: cuda.cudaTag }));
         await runPip(py.cmd, [
-          'install', 'torch',
+          'install', '--upgrade', '--force-reinstall',
+          'torch', 'torchvision', 'torchaudio',
           '--index-url', `https://download.pytorch.org/whl/${cuda.cudaTag}`,
           '--trusted-host', 'download.pytorch.org',
         ], win);
@@ -238,7 +258,7 @@ function register() {
     }
   });
 
-  ipcMain.handle('train:start', async (event) => {
+  ipcMain.handle('train:start', async (event, options) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
 
@@ -292,13 +312,16 @@ function register() {
       const pretrainedDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
       const hasPretrained = fs.existsSync(path.join(pretrainedDir, 'config.json'));
       const modelArg = hasPretrained ? pretrainedDir : 'bert-base-multilingual-cased';
+      const epochs = options?.epochs || 50;
+      const batchSize = options?.batchSize || 32;
 
       trainingProcess = spawn(py.cmd, [
         trainScript,
         '--csv', csvPath,
         '--output', modelDir,
         '--model', modelArg,
-        '--epochs', '5',
+        '--epochs', String(epochs),
+        '--batch-size', String(batchSize),
       ], {
         cwd: path.dirname(trainScript),
       });

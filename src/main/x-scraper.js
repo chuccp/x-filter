@@ -200,6 +200,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
       `);
 
       let newInBatch = 0;
+      const newComments = [];
       for (const c of batch) {
         // Extract post text from the first article marker
         if (c._isPost) {
@@ -210,6 +211,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
           seenTexts.add(c.text);
           c.post_text = postText;
           comments.push(c);
+          newComments.push({ text: c.text, username: c.username });
           newInBatch++;
         }
       }
@@ -221,7 +223,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
         noNewCount = 0;
       }
 
-      if (onProgress) onProgress({ found: comments.length, scroll: i + 1, total: maxScroll });
+      if (onProgress) onProgress({ found: comments.length, scroll: i + 1, total: maxScroll, newComments });
 
       // Scroll down
       await cdp.evaluate(sessionId, 'window.scrollBy(0, 800)');

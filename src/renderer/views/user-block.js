@@ -32,35 +32,56 @@ export default class UserBlockView {
     const res = await apiInvoke('model:status');
     const el = document.getElementById('model-info');
     const btn = document.getElementById('btn-load-model');
-    if (btn) {
-      btn.textContent = res.loaded ? t('block.btn_reload') : t('block.btn_load_model');
-      btn.onclick = async () => {
-        btn.textContent = t('block.loading_model');
-        btn.disabled = true;
-        await apiInvoke('model:load');
-        this.checkModel();
-      };
-    }
+
     if (res.loaded) {
       el.className = 'model-status loaded';
       el.innerHTML = t('block.model_loaded');
       if (res.metrics) {
         el.innerHTML += ` — F1: ${res.metrics.eval_f1?.toFixed(3) || 'N/A'}`;
       }
+      if (btn) {
+        btn.textContent = t('block.btn_reload');
+        btn.onclick = async () => {
+          btn.textContent = t('block.loading_model');
+          btn.disabled = true;
+          await apiInvoke('model:load');
+          this.checkModel();
+        };
+      }
     } else {
+      // Model not loaded — check if fine-tuned model exists locally and auto-load
+      const dlRes = await apiInvoke('model:download-finetuned-status');
+      if (dlRes.downloaded) {
+        el.className = 'model-status not-loaded';
+        el.innerHTML = t('block.auto_loading_model');
+        if (btn) { btn.style.display = 'none'; }
+        const loadRes = await apiInvoke('model:load');
+        if (loadRes.success) {
+          this.checkModel();
+          return;
+        }
+        // Auto-load failed, fall through to manual UI
+      }
+
       el.className = 'model-status not-loaded';
       el.innerHTML = t('block.model_not_loaded');
+      if (btn) {
+        btn.style.display = '';
+        btn.textContent = t('block.btn_load_model');
+        btn.onclick = async () => {
+          btn.textContent = t('block.loading_model');
+          btn.disabled = true;
+          await apiInvoke('model:load');
+          this.checkModel();
+        };
+      }
     }
 
-    // Check if fine-tuned model is downloadable
+    // Check if fine-tuned model is downloadable from HF Hub
     const dlRes = await apiInvoke('model:download-finetuned-status');
     const dlBtn = document.getElementById('btn-download-model');
     if (dlBtn) {
-      if (dlRes.downloaded && !res.loaded) {
-        dlBtn.style.display = '';
-        dlBtn.textContent = t('block.btn_download_model');
-        dlBtn.onclick = () => this.downloadModel();
-      } else if (dlRes.downloaded && res.loaded) {
+      if (dlRes.downloaded) {
         dlBtn.style.display = 'none';
       } else {
         dlBtn.style.display = '';
@@ -173,6 +194,18 @@ export default class UserBlockView {
       document.getElementById('block-progress-text').textContent =
         t('block.scraping_progress', { found: p.found, scroll: p.scroll });
       logLine.textContent = t('block.scraping_log', { found: p.found });
+      log.appendChild(logLine);
+
+      // Show each newly found comment in the log
+      if (p.newComments && p.newComments.length > 0) {
+        for (const c of p.newComments) {
+          const commentLine = el('div', { className: 'log-line comment' });
+          commentLine.textContent = `@${c.username}: ${c.text}`;
+          log.appendChild(commentLine);
+        }
+      }
+      log.scrollTop = log.scrollHeight;
+      return;
     } else if (p.phase === 'predicting') {
       document.getElementById('block-bar').style.background = 'var(--accent)';
       document.getElementById('block-bar').style.width = '100%';

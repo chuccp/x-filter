@@ -54,7 +54,9 @@ export default class AdminTrainView {
         el('span', { id: 'train-data-stats', style: 'margin-left:12px;font-size:12px;color:var(--text-muted)' }),
         el('div', { style: 'margin-left:auto;display:flex;align-items:center;gap:6px' },
           el('label', { style: 'font-size:12px;color:var(--text-dim)' }, t('train.epochs_label')),
-          el('input', { type: 'number', id: 'train-epochs', value: '5', min: '1', max: '20', style: 'width:56px;font-size:13px' }),
+          el('input', { type: 'number', id: 'train-epochs', value: '50', min: '1', max: '200', style: 'width:56px;font-size:13px' }),
+          el('label', { style: 'font-size:12px;color:var(--text-dim);margin-left:6px' }, t('train.batch_size_label')),
+          el('input', { type: 'number', id: 'train-batch-size', value: '32', min: '4', max: '128', step: '4', style: 'width:56px;font-size:13px' }),
           el('button', { className: 'btn btn-primary btn-sm', id: 'btn-train' }, t('train.btn_train_text')),
           el('button', { className: 'btn btn-outline btn-sm', id: 'btn-cancel-train', style: 'display:none' }, t('train.btn_cancel')),
         ),
@@ -172,6 +174,14 @@ export default class AdminTrainView {
           <span style="color:var(--success);font-size:16px">✔</span>
           <span>${t('train.deps_ok')}</span>
         </div>`);
+        // Show torch CUDA status
+        if (env.packages.torchVersion) {
+          const torchCudaOk = env.packages.torchCuda;
+          items.push(`<div class="log-line ${torchCudaOk ? 'success' : ''}" style="display:flex;align-items:center;gap:8px;${torchCudaOk ? '' : 'color:#f59e0b'}">
+            <span style="font-size:16px">${torchCudaOk ? '✔' : '⚠'}</span>
+            <span>PyTorch ${env.packages.torchVersion} — ${torchCudaOk ? `CUDA (${env.packages.torchCudaDevices} GPU)` : t('train.torch_cpu_only')}</span>
+          </div>`);
+        }
       } else {
         const detail = env.packages.detail ? `<br><code style="font-size:11px;color:var(--text-muted)">${env.packages.detail}</code>` : '';
         items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--danger)">
@@ -187,14 +197,17 @@ export default class AdminTrainView {
     const actions = document.getElementById('env-actions');
     actions.innerHTML = '';
 
-    if (env.python && !env.packages.all) {
+    // Show install button if packages missing OR torch is CPU-only while CUDA is available
+    const torchNeedsCuda = env.cuda?.available && env.packages.all && !env.packages.torchCuda;
+    if (env.python && (!env.packages.all || torchNeedsCuda)) {
       const btn = el('button', {
         className: 'btn btn-primary',
         id: 'btn-install-deps',
         onClick: () => this.installDeps(),
       }, t('train.btn_install_deps'));
       actions.appendChild(btn);
-      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, t('train.install_hint'));
+      const hintText = torchNeedsCuda ? t('train.install_cuda_hint') : t('train.install_hint');
+      const hint = el('div', { style: 'font-size:12px;color:var(--text-muted);margin-top:6px' }, hintText);
       actions.appendChild(hint);
     }
 
@@ -422,7 +435,9 @@ export default class AdminTrainView {
     document.getElementById('train-progress-text').textContent = t('train.starting');
     this.logCard.style.display = 'flex';
 
-    const res = await apiInvoke('train:start');
+    const epochs = parseInt(document.getElementById('train-epochs').value) || 50;
+    const batchSize = parseInt(document.getElementById('train-batch-size').value) || 32;
+    const res = await apiInvoke('train:start', { epochs, batchSize });
     this.training = false;
     document.getElementById('btn-train').style.display = 'inline-flex';
     document.getElementById('btn-cancel-train').style.display = 'none';

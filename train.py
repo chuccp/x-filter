@@ -65,7 +65,7 @@ def parse_args():
     p.add_argument("--csv", required=True, help="Path to labeled CSV file")
     p.add_argument("--output", default="data/models/x-spam-classifier", help="Output model path")
     p.add_argument("--model", default="bert-base-multilingual-cased", help="Base model name")
-    p.add_argument("--epochs", type=int, default=5)
+    p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--batch-size", type=int, default=16)
     p.add_argument("--lr", type=float, default=2e-5)
     p.add_argument("--max-len", type=int, default=256, help="Max token length (increased for post+comment concatenation)")
@@ -130,6 +130,9 @@ def main():
     else:
         status(f"Downloading model from HuggingFace Hub: {args.model}")
 
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    status(f"Device: {device}" + (f" (GPU: {torch.cuda.get_device_name(0)})" if device == 'cuda' else ' (no CUDA available, training will be slow)'))
+
     tokenizer = AutoTokenizer.from_pretrained(model_source)
     model = AutoModelForSequenceClassification.from_pretrained(model_source, num_labels=2)
 
@@ -147,14 +150,17 @@ def main():
         per_device_eval_batch_size=args.batch_size,
         eval_strategy="epoch",
         save_strategy="epoch",
+        save_total_limit=5,
         logging_steps=10,
         load_best_model_at_end=True,
         metric_for_best_model="f1",
         learning_rate=args.lr,
         weight_decay=0.01,
         warmup_ratio=0.1,
+        fp16=device == 'cuda',
         report_to="none",
-        dataloader_pin_memory=torch.cuda.is_available(),
+        dataloader_pin_memory=(device == 'cuda'),
+        dataloader_num_workers=2 if device == 'cuda' else 0,
     )
 
     trainer = Trainer(
