@@ -35,7 +35,13 @@ export default class AdminSettingsView {
         modelEl.innerHTML += ` — F1: ${modelRes.metrics.eval_f1?.toFixed(3) || 'N/A'}`;
       }
     } else {
-      modelEl.innerHTML = `<span style="color:var(--text-muted)">模型未加载</span> — ${modelRes.error || '请先运行 train.py 训练模型'}`;
+      modelEl.innerHTML = `<span style="color:var(--text-muted)">模型未加载</span> — ${modelRes.error || '请先运行 train.py 训练模型'} `
+        + '<button class="btn btn-sm" id="btn-settings-load-model">加载模型</button>';
+      document.getElementById('btn-settings-load-model').addEventListener('click', async () => {
+        modelEl.innerHTML = '正在加载模型...';
+        await apiInvoke('model:load');
+        this.loadSettings();
+      });
     }
   }
 
