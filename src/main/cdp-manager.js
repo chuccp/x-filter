@@ -88,7 +88,7 @@ function disconnect() {
 function sendCommand(method, params) {
   return new Promise((resolve, reject) => {
     if (!isConnected()) {
-      reject(new Error('Not connected to Chrome'));
+      reject(new Error('未连接 Chrome，请先在左侧「连接」页面点击连接按钮'));
       return;
     }
     commandId++;
@@ -97,7 +97,7 @@ function sendCommand(method, params) {
     setTimeout(() => {
       if (pendingCommands.has(commandId)) {
         pendingCommands.delete(commandId);
-        reject(new Error('Command timed out: ' + method));
+        reject(new Error('操作超时: ' + method));
       }
     }, 10000);
   });
@@ -106,7 +106,7 @@ function sendCommand(method, params) {
 function sendCommandWithSession(method, params, sessionId) {
   return new Promise((resolve, reject) => {
     if (!isConnected()) {
-      reject(new Error('Not connected to Chrome'));
+      reject(new Error('未连接 Chrome，请先在左侧「连接」页面点击连接按钮'));
       return;
     }
     commandId++;
