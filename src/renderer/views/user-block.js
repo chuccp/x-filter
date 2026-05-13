@@ -32,12 +32,10 @@ export default class UserBlockView {
       if (res.metrics) {
         el.innerHTML += ` — F1 分数: ${res.metrics.eval_f1?.toFixed(3) || 'N/A'}`;
       }
-      if (btn) btn.style.display = 'none';
     } else {
       el.className = 'model-status not-loaded';
       el.innerHTML = '模型未加载 — 请先用 Python 训练模型（参见「导出数据」页面）';
       if (btn) {
-        btn.style.display = '';
         btn.onclick = async () => {
           btn.textContent = '正在加载...';
           btn.disabled = true;
