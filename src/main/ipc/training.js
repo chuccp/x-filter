@@ -202,8 +202,8 @@ function register() {
 
       // Install each package individually so one failure doesn't block others
       const pkgs = cuda.available
-        ? ['transformers', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas']
-        : ['transformers', 'torch', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'];
+        ? ['transformers', 'accelerate>=0.26.0', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas']
+        : ['transformers', 'torch', 'accelerate>=0.26.0', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas'];
 
       let failed = [];
       for (const pkg of pkgs) {
@@ -328,7 +328,13 @@ function register() {
 
       trainingProcess.stderr.on('data', (data) => {
         const text = data.toString().trim();
-        if (text && win) win.webContents.send('train:progress', { type: 'log', text: '[stderr] ' + text });
+        if (text && win) {
+          if (text.includes('UserWarning') || text.includes('warnings.warn')) {
+            win.webContents.send('train:progress', { type: 'log', text: '[warn] ' + text });
+          } else {
+            win.webContents.send('train:progress', { type: 'log', text: '[stderr] ' + text });
+          }
+        }
       });
 
       const exitCode = await new Promise((resolve) => {
@@ -338,7 +344,18 @@ function register() {
 
       if (exitCode === 0) {
         if (win) win.webContents.send('train:progress', { type: 'status', text: 'Training complete!' });
-        try { await modelManager.loadModel(modelDir); } catch (e) { /* ignore */ }
+        try {
+          const loadResult = await modelManager.loadModel(modelDir);
+          if (win) {
+            if (loadResult.loaded) {
+              win.webContents.send('train:progress', { type: 'status', text: 'Model loaded and ready for inference' });
+            } else {
+              win.webContents.send('train:progress', { type: 'status', text: 'Model load failed: ' + (loadResult.error || 'unknown error') });
+            }
+          }
+        } catch (e) {
+          if (win) win.webContents.send('train:progress', { type: 'status', text: 'Model load error: ' + e.message });
+        }
         return { success: true };
       } else {
         return { success: false, error: `Python exited with code ${exitCode}` };
@@ -436,7 +453,13 @@ function register() {
 
       downloadProcess.stderr.on('data', (data) => {
         const text = data.toString().trim();
-        if (text && win) win.webContents.send('model-download:progress', { type: 'log', text: '[stderr] ' + text });
+        if (text && win) {
+          if (text.includes('UserWarning') || text.includes('warnings.warn')) {
+            win.webContents.send('model-download:progress', { type: 'log', text: '[warn] ' + text });
+          } else {
+            win.webContents.send('model-download:progress', { type: 'log', text: '[stderr] ' + text });
+          }
+        }
       });
 
       const exitCode = await new Promise((resolve) => {

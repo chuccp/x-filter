@@ -11,24 +11,33 @@ let modelLoaded = false;
 let modelStatus = { loaded: false, error: null, metrics: null };
 
 async function loadModel(modelPath) {
-  const { pipeline: transformersPipeline } = require('@xenova/transformers');
+  const { pipeline: transformersPipeline, env } = require('@xenova/transformers');
 
   const modelDir = modelPath || path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
   const onnxDir = path.join(modelDir, 'onnx');
 
   const fs = require('fs');
+
+  // Use the model root directory (not onnx/ subdirectory).
+  // @xenova/transformers expects: <model_root>/onnx/model.onnx
   let loadPath = modelDir;
-  if (fs.existsSync(path.join(onnxDir, 'config.json'))) {
-    loadPath = onnxDir;
-  }
 
   if (!fs.existsSync(path.join(loadPath, 'config.json'))) {
     modelStatus = { loaded: false, error: 'Model not found. Run train.py first and place model in ' + modelDir };
     return modelStatus;
   }
 
+  // Work around @xenova/transformers pathJoin bug on Windows:
+  // The library's custom pathJoin doesn't handle absolute Windows paths,
+  // so we set localModelPath to the parent directory and use only the leaf name.
+  const parentDir = path.dirname(loadPath);
+  const modelName = path.basename(loadPath);
+
+  env.localModelPath = parentDir;
+  env.allowRemoteModels = false;
+
   try {
-    pipeline = await transformersPipeline('text-classification', loadPath);
+    pipeline = await transformersPipeline('text-classification', modelName, { quantized: false });
     modelLoaded = true;
 
     // Load metrics if available

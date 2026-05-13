@@ -154,6 +154,7 @@ def main():
         weight_decay=0.01,
         warmup_ratio=0.1,
         report_to="none",
+        dataloader_pin_memory=torch.cuda.is_available(),
     )
 
     trainer = Trainer(
@@ -184,6 +185,18 @@ def main():
     ort_model = ORTModelForSequenceClassification.from_pretrained(args.output, export=True)
     ort_model.save_pretrained(onnx_dir)
     tokenizer.save_pretrained(onnx_dir)
+
+    # Add id2label/label2id to config for transformers.js inference
+    for subdir in [args.output, onnx_dir]:
+        cfg_path = os.path.join(subdir, 'config.json')
+        if os.path.exists(cfg_path):
+            with open(cfg_path, 'r') as f:
+                cfg = json.load(f)
+            cfg['id2label'] = {'0': 'LABEL_0', '1': 'LABEL_1'}
+            cfg['label2id'] = {'LABEL_0': 0, 'LABEL_1': 1}
+            cfg['num_labels'] = 2
+            with open(cfg_path, 'w') as f:
+                json.dump(cfg, f, indent=2)
 
     metrics_path = os.path.join(args.output, "metrics.json")
     with open(metrics_path, "w") as f:
