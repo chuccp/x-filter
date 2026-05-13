@@ -70,6 +70,7 @@ export default class AdminTrainView {
       ),
       el('div', { className: 'card-body' },
         el('div', { id: 'train-model-info' }),
+        el('div', { id: 'train-model-actions', style: 'margin-top:12px' }),
       ),
     );
     c.appendChild(this.modelCard);
@@ -114,6 +115,9 @@ export default class AdminTrainView {
     });
     ipcRenderer.on('model-download:progress', (event, data) => {
       this.handleDownloadProgress(data);
+    });
+    ipcRenderer.on('model:upload-finetuned-progress', (event, data) => {
+      this.handleUploadProgress(data);
     });
   }
 
@@ -390,6 +394,17 @@ export default class AdminTrainView {
             <div class="stat-card"><span class="num">${(m.eval_recall * 100).toFixed(1)}%</span><span class="label">${t('train.metric_recall')}</span></div>
           </div>`;
       }
+      // Show upload button
+      const actionsEl = document.getElementById('train-model-actions');
+      if (actionsEl) {
+        actionsEl.innerHTML = ''
+          + `<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">${t('train.upload_ready')}</div>`
+          + `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">`
+          + `<input type="text" id="hf-token-input" placeholder="HF_TOKEN (hf_xxx)" style="width:260px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)">`
+          + `<button class="btn btn-primary btn-sm" id="btn-upload-hf">${t('train.btn_upload_hf')}</button>`
+          + `</div>`;
+        document.getElementById('btn-upload-hf').addEventListener('click', () => this.uploadToHF());
+      }
     }
   }
 
@@ -426,6 +441,43 @@ export default class AdminTrainView {
     document.getElementById('btn-train').style.display = 'inline-flex';
     document.getElementById('btn-cancel-train').style.display = 'none';
     showStatus('train-status', t('train.cancelled'));
+  }
+
+  // ── Upload to HF ───────────────────────────────────────────
+
+  async uploadToHF() {
+    const tokenEl = document.getElementById('hf-token-input');
+    const token = tokenEl ? tokenEl.value.trim() : '';
+    if (!token) {
+      this.appendLog(t('train.upload_token_required'), 'log-line');
+      return;
+    }
+
+    const btn = document.getElementById('btn-upload-hf');
+    if (btn) { btn.disabled = true; btn.textContent = t('train.uploading'); }
+
+    this.logCard.style.display = 'flex';
+    document.getElementById('train-log').innerHTML = '';
+    this.appendLog(t('train.uploading'), 'log-line');
+
+    const res = await apiInvoke('model:upload-finetuned', null, token);
+
+    if (res.success) {
+      this.appendLog(t('train.upload_done'), 'log-line success');
+      this.appendLog(`https://huggingface.co/${res.repo}`, 'log-line');
+    } else {
+      this.appendLog(t('train.upload_fail', { error: res.error || 'Unknown' }), 'log-line');
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = t('train.btn_upload_hf'); }
+  }
+
+  handleUploadProgress(data) {
+    if (data.type === 'status') {
+      this.appendLog(data.text, 'log-line success');
+    } else if (data.type === 'log') {
+      this.appendLog(data.text, 'log-line');
+    }
   }
 
   // ── Log / Progress ─────────────────────────────────────────

@@ -38,10 +38,23 @@ export default class AdminSettingsView {
       }
     } else {
       modelEl.innerHTML = `<span style="color:var(--text-muted)">${t('settings.model_not_loaded')}</span> — ${modelRes.error || t('settings.model_default_error')} `
+        + `<button class="btn btn-sm btn-outline" id="btn-settings-download-model" style="margin-right:6px">${t('settings.btn_download_model')}</button>`
         + `<button class="btn btn-sm" id="btn-settings-load-model">${t('settings.btn_load_model')}</button>`;
       document.getElementById('btn-settings-load-model').addEventListener('click', async () => {
         modelEl.innerHTML = t('settings.loading_model');
         await apiInvoke('model:load');
+        this.loadSettings();
+      });
+      document.getElementById('btn-settings-download-model').addEventListener('click', async () => {
+        const dlBtn = document.getElementById('btn-settings-download-model');
+        dlBtn.disabled = true;
+        dlBtn.textContent = t('block.downloading_model');
+        const res = await apiInvoke('model:download-finetuned');
+        if (res.success) {
+          modelEl.innerHTML = `<span style="color:var(--success)">${t('block.download_complete')}</span>`;
+        } else {
+          modelEl.innerHTML = `<span style="color:var(--danger)">${t('block.download_failed', { error: res.error })}</span>`;
+        }
         this.loadSettings();
       });
     }

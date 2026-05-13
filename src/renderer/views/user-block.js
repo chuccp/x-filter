@@ -6,6 +6,7 @@ const { ipcRenderer } = require('electron');
 export default class UserBlockView {
   constructor() {
     this.blocking = false;
+    this.downloading = false;
     this.bindEvents();
     this.checkModel();
   }
@@ -20,6 +21,10 @@ export default class UserBlockView {
     ipcRenderer.on('block:progress', (event, progress) => {
       if (!this.blocking) return;
       this.renderProgress(progress);
+    });
+
+    ipcRenderer.on('model:download-finetuned-progress', (event, data) => {
+      this.handleDownloadProgress(data);
     });
   }
 
@@ -45,6 +50,67 @@ export default class UserBlockView {
     } else {
       el.className = 'model-status not-loaded';
       el.innerHTML = t('block.model_not_loaded');
+    }
+
+    // Check if fine-tuned model is downloadable
+    const dlRes = await apiInvoke('model:download-finetuned-status');
+    const dlBtn = document.getElementById('btn-download-model');
+    if (dlBtn) {
+      if (dlRes.downloaded && !res.loaded) {
+        dlBtn.style.display = '';
+        dlBtn.textContent = t('block.btn_download_model');
+        dlBtn.onclick = () => this.downloadModel();
+      } else if (dlRes.downloaded && res.loaded) {
+        dlBtn.style.display = 'none';
+      } else {
+        dlBtn.style.display = '';
+        dlBtn.textContent = t('block.btn_download_model');
+        dlBtn.onclick = () => this.downloadModel();
+      }
+    }
+  }
+
+  async downloadModel() {
+    this.downloading = true;
+    const btn = document.getElementById('btn-download-model');
+    if (btn) { btn.disabled = true; btn.textContent = t('block.downloading_model'); }
+
+    const dlArea = document.getElementById('download-progress-area');
+    const dlBar = document.getElementById('download-bar');
+    const dlText = document.getElementById('download-progress-text');
+    if (dlArea) dlArea.style.display = 'block';
+    if (dlBar) dlBar.style.width = '0%';
+    if (dlText) dlText.textContent = t('block.downloading_model');
+
+    const res = await apiInvoke('model:download-finetuned');
+
+    this.downloading = false;
+    if (dlArea) dlArea.style.display = 'none';
+
+    if (res.success) {
+      showStatus('block-status', t('block.download_complete'));
+      await this.checkModel();
+    } else {
+      showStatus('block-status', t('block.download_failed', { error: res.error }), false);
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = t('block.btn_download_model'); }
+  }
+
+  handleDownloadProgress(data) {
+    const dlBar = document.getElementById('download-bar');
+    const dlText = document.getElementById('download-progress-text');
+    const dlArea = document.getElementById('download-progress-area');
+    if (dlArea && dlArea.style.display === 'none') return;
+
+    if (data.type === 'status') {
+      if (dlText) dlText.textContent = data.text;
+    } else if (data.type === 'progress') {
+      const pct = data.percent || 0;
+      if (dlBar) dlBar.style.width = pct + '%';
+      const mb = (data.downloaded || 0) / 1024 / 1024;
+      const totalMb = (data.total || 1) / 1024 / 1024;
+      if (dlText) dlText.textContent = `${data.file}: ${pct}% (${mb.toFixed(1)}/${totalMb.toFixed(1)} MB)`;
     }
   }
 

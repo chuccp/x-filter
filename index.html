@@ -261,7 +261,12 @@
             <label data-i18n="block.url_label">帖子/主页链接</label>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
               <div class="model-status" id="model-info" style="white-space:nowrap">检查中...</div>
+              <button class="btn btn-sm btn-outline" id="btn-download-model" style="white-space:nowrap" data-i18n="block.btn_download_model">下载模型</button>
               <button class="btn btn-sm" id="btn-load-model" style="white-space:nowrap" data-i18n="block.btn_load_model">加载模型</button>
+            </div>
+            <div class="progress-bar" id="download-progress-area" style="display:none;margin-bottom:8px">
+              <div class="progress-fill" id="download-bar"></div>
+              <span class="progress-text" id="download-progress-text"></span>
             </div>
             <input type="text" id="block-url" data-i18n-placeholder="block.url_placeholder" placeholder="帖子 https://x.com/user/status/123 或 主页 https://x.com/user">
           </div>

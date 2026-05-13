@@ -1,5 +1,30 @@
-const { ipcMain } = require('electron');
+const { ipcMain, BrowserWindow, app } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
 const modelManager = require('../model-manager');
+const { t } = require('../i18n');
+
+let downloadProcess = null;
+
+function getPythonCommand() {
+  const { execSync } = require('child_process');
+  try {
+    const names = process.platform === 'win32' ? ['python', 'python3', 'py'] : ['python3', 'python'];
+    for (const name of names) {
+      const cmd = process.platform === 'win32'
+        ? execSync(`where ${name} 2>nul`, { encoding: 'utf-8', shell: true, stdio: 'pipe' }).trim().split('\n')[0].trim()
+        : name;
+      if (cmd && fs.existsSync(cmd)) {
+        try {
+          execSync(`"${cmd}" --version`, { encoding: 'utf-8', shell: true, stdio: 'pipe' });
+          return cmd;
+        } catch (e) { /* try next */ }
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return null;
+}
 
 function register() {
   ipcMain.handle('model:load', async (event, modelPath) => {
@@ -29,6 +54,155 @@ function register() {
       const results = await modelManager.predictBatch(texts);
       return { success: true, results };
     } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  // ── Download fine-tuned model from Hugging Face Hub ────────
+
+  ipcMain.handle('model:download-finetuned', async (event, repo) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const py = getPythonCommand();
+      if (!py) return { success: false, error: t('train.python_not_found_error') };
+
+      const projectRoot = path.join(__dirname, '..', '..', '..');
+      const script = path.join(projectRoot, 'download_finetuned.py');
+      if (!fs.existsSync(script)) {
+        return { success: false, error: 'download_finetuned.py not found' };
+      }
+
+      const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
+      const repoId = repo || 'chuccp/x-spam-classifier';
+
+      downloadProcess = spawn(py, [
+        script,
+        '--repo', repoId,
+        '--output', modelDir,
+      ], { cwd: path.dirname(script) });
+
+      downloadProcess.stdout.on('data', (data) => {
+        const lines = data.toString().trim().split('\n');
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          if (win) {
+            if (line.startsWith('[STATUS]')) {
+              win.webContents.send('model:download-finetuned-progress', { type: 'status', text: line.slice(9) });
+            } else if (line.startsWith('[PROGRESS]')) {
+              try {
+                const info = JSON.parse(line.slice(11));
+                win.webContents.send('model:download-finetuned-progress', { type: 'progress', ...info });
+              } catch (e) { /* ignore */ }
+            } else {
+              win.webContents.send('model:download-finetuned-progress', { type: 'log', text: line });
+            }
+          }
+        }
+      });
+
+      downloadProcess.stderr.on('data', (data) => {
+        const text = data.toString().trim();
+        if (text && win) {
+          win.webContents.send('model:download-finetuned-progress', { type: 'log', text: '[stderr] ' + text });
+        }
+      });
+
+      const exitCode = await new Promise((resolve) => {
+        downloadProcess.on('close', resolve);
+      });
+      downloadProcess = null;
+
+      if (exitCode === 0) {
+        if (win) win.webContents.send('model:download-finetuned-progress', { type: 'status', text: t('train.download_done') });
+        return { success: true, path: modelDir };
+      } else {
+        return { success: false, error: `Download exited with code ${exitCode}` };
+      }
+    } catch (e) {
+      downloadProcess = null;
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('model:download-finetuned-cancel', async () => {
+    if (downloadProcess) {
+      downloadProcess.kill();
+      downloadProcess = null;
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('model:download-finetuned-status', async () => {
+    try {
+      const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
+      const hasModel = fs.existsSync(path.join(modelDir, 'onnx', 'model.onnx'))
+        || fs.existsSync(path.join(modelDir, 'model.onnx'));
+      return { downloaded: hasModel && fs.existsSync(path.join(modelDir, 'config.json')), path: modelDir };
+    } catch (e) {
+      return { downloaded: false, error: e.message };
+    }
+  });
+
+  // ── Upload trained model to Hugging Face Hub ───────────────
+
+  ipcMain.handle('model:upload-finetuned', async (event, repo, token) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const py = getPythonCommand();
+      if (!py) return { success: false, error: t('train.python_not_found_error') };
+
+      const projectRoot = path.join(__dirname, '..', '..', '..');
+      const script = path.join(projectRoot, 'upload_to_hf.py');
+      if (!fs.existsSync(script)) {
+        return { success: false, error: 'upload_to_hf.py not found' };
+      }
+
+      const repoId = repo || 'chuccp/x-spam-classifier';
+      const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
+
+      const env = { ...process.env };
+      if (token) env.HF_TOKEN = token;
+
+      downloadProcess = spawn(py, [
+        script,
+        '--repo', repoId,
+        '--input', modelDir,
+      ], { cwd: path.dirname(script), env });
+
+      downloadProcess.stdout.on('data', (data) => {
+        const lines = data.toString().trim().split('\n');
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          if (win) {
+            if (line.startsWith('[STATUS]')) {
+              win.webContents.send('model:upload-finetuned-progress', { type: 'status', text: line.slice(9) });
+            } else {
+              win.webContents.send('model:upload-finetuned-progress', { type: 'log', text: line });
+            }
+          }
+        }
+      });
+
+      downloadProcess.stderr.on('data', (data) => {
+        const text = data.toString().trim();
+        if (text && win) {
+          win.webContents.send('model:upload-finetuned-progress', { type: 'log', text: '[stderr] ' + text });
+        }
+      });
+
+      const exitCode = await new Promise((resolve) => {
+        downloadProcess.on('close', resolve);
+      });
+      downloadProcess = null;
+
+      if (exitCode === 0) {
+        if (win) win.webContents.send('model:upload-finetuned-progress', { type: 'status', text: t('train.upload_done') });
+        return { success: true, repo: repoId };
+      } else {
+        return { success: false, error: `Upload exited with code ${exitCode}` };
+      }
+    } catch (e) {
+      downloadProcess = null;
       return { success: false, error: e.message };
     }
   });
