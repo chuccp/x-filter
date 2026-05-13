@@ -73,7 +73,17 @@ export default class UserBlockView {
       showStatus('block-status',
         `完成！扫描 ${res.scanned} 条评论，发现 ${res.spam} 条垃圾，拉黑 ${res.blocked} 个用户`);
     } else {
-      showStatus('block-status', '失败：' + res.error, false);
+      const statusEl = document.getElementById('block-status');
+      if (res.error && res.error.includes('未连接 Chrome')) {
+        statusEl.className = 'status-line error';
+        statusEl.innerHTML = '未连接 Chrome '
+          + '<button class="btn btn-sm" id="btn-goto-connect" style="margin-left:8px">前往连接</button>';
+        document.getElementById('btn-goto-connect').onclick = () => {
+          document.querySelector('.nav-item[data-view="connect"]')?.click();
+        };
+      } else {
+        showStatus('block-status', '失败：' + res.error, false);
+      }
     }
   }
 
