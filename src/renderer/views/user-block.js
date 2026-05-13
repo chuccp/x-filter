@@ -26,23 +26,24 @@ export default class UserBlockView {
     const res = await apiInvoke('model:status');
     const el = document.getElementById('model-info');
     const btn = document.getElementById('btn-load-model');
+    if (btn) {
+      btn.textContent = res.loaded ? '重新加载' : '加载模型';
+      btn.onclick = async () => {
+        btn.textContent = '正在加载...';
+        btn.disabled = true;
+        await apiInvoke('model:load');
+        this.checkModel();
+      };
+    }
     if (res.loaded) {
       el.className = 'model-status loaded';
       el.innerHTML = '模型已加载';
       if (res.metrics) {
-        el.innerHTML += ` — F1 分数: ${res.metrics.eval_f1?.toFixed(3) || 'N/A'}`;
+        el.innerHTML += ` — F1: ${res.metrics.eval_f1?.toFixed(3) || 'N/A'}`;
       }
     } else {
       el.className = 'model-status not-loaded';
-      el.innerHTML = '模型未加载 — 请先用 Python 训练模型（参见「导出数据」页面）';
-      if (btn) {
-        btn.onclick = async () => {
-          btn.textContent = '正在加载...';
-          btn.disabled = true;
-          await apiInvoke('model:load');
-          this.checkModel();
-        };
-      }
+      el.innerHTML = '模型未加载';
     }
   }
 
