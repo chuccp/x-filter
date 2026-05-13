@@ -6,6 +6,85 @@ function cancel() {
   cancelFlag = true;
 }
 
+function isProfileUrl(url) {
+  // Post URL: x.com/user/status/123456...
+  // Profile URL: x.com/user (no /status/ in path)
+  try {
+    const u = new URL(url);
+    return u.hostname === 'x.com' && !u.pathname.includes('/status/');
+  } catch {
+    return !url.includes('/status/');
+  }
+}
+
+async function scrapeProfilePosts(profileUrl, onProgress) {
+  cancelFlag = false;
+
+  const targets = await cdp.getPageTargets();
+  if (targets.length === 0) {
+    const { sessionId } = await cdp.openNewTab('about:blank');
+    return scrapeProfileWithSession(sessionId, profileUrl, onProgress);
+  }
+
+  const sessionId = await cdp.attachToTarget(targets[0].targetId);
+  return scrapeProfileWithSession(sessionId, profileUrl, onProgress);
+}
+
+async function scrapeProfileWithSession(sessionId, profileUrl, onProgress) {
+  const settings = require('./database').getAllSettings();
+  const maxScroll = parseInt(settings.max_scroll) || 50;
+  const scrollDelay = parseInt(settings.scroll_delay) || 500;
+
+  try {
+    await cdp.navigatePage(sessionId, profileUrl);
+    await cdp.waitForSelector(sessionId, 'article[data-testid="tweet"]', 30000);
+
+    const postUrls = new Set();
+    let noNewCount = 0;
+    const maxNoNew = 5;
+
+    for (let i = 0; i < maxScroll; i++) {
+      if (cancelFlag) break;
+
+      const links = await cdp.evaluate(sessionId, `
+        (function() {
+          const links = document.querySelectorAll('a[href*="/status/"]');
+          return [...new Set([...links].map(a => {
+            const href = a.getAttribute('href');
+            // Extract status ID: /username/status/1234567890
+            const m = href.match(/^\\/(\\w+)\\/status\\/(\\d+)/);
+            return m ? 'https://x.com' + m[0] : null;
+          }).filter(Boolean))];
+        })()
+      `);
+
+      let newCount = 0;
+      for (const url of links) {
+        if (!postUrls.has(url)) {
+          postUrls.add(url);
+          newCount++;
+        }
+      }
+
+      if (onProgress) onProgress({ phase: 'listing', posts: postUrls.size, scroll: i + 1 });
+
+      if (newCount === 0) {
+        noNewCount++;
+        if (noNewCount >= maxNoNew) break;
+      } else {
+        noNewCount = 0;
+      }
+
+      await cdp.evaluate(sessionId, 'window.scrollBy(0, 800)');
+      await sleep(scrollDelay);
+    }
+
+    return [...postUrls];
+  } finally {
+    try { await cdp.detachFromTarget(sessionId); } catch (e) { /* ignore */ }
+  }
+}
+
 async function scrapeComments(url, onProgress) {
   cancelFlag = false;
 
@@ -158,4 +237,4 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-module.exports = { scrapeComments, cancel };
+module.exports = { scrapeComments, scrapeProfilePosts, isProfileUrl, cancel };

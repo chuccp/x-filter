@@ -11,43 +11,67 @@ function register() {
   ipcMain.handle('block:start', async (event, url, options) => {
     try {
       const threshold = options?.threshold || parseFloat(db.getSetting('spam_threshold')) || 0.8;
-      const sessionId = db.createBlockSession(url);
       const win = BrowserWindow.fromWebContents(event.sender);
 
       if (!modelManager.getStatus().loaded) {
         return { success: false, error: 'Model not loaded. Load a model first or train one with train.py.' };
       }
 
-      const { comments } = await scraper.scrapeComments(url, (progress) => {
-        if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress });
-      });
+      const targets = scraper.isProfileUrl(url)
+        ? await scraper.scrapeProfilePosts(url, (p) => {
+            if (win) win.webContents.send('block:progress', { phase: 'listing', ...p });
+          })
+        : [url];
 
-      if (comments.length === 0) {
-        db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
+      if (targets.length === 0) {
         return { success: true, scanned: 0, spam: 0, blocked: 0 };
       }
 
-      const predictions = await modelManager.predictBatch(
-        comments.map(c => ({ text: c.text, post_text: c.post_text }))
-      );
-      const spamComments = comments.filter((c, i) => predictions[i] && predictions[i].spam && predictions[i].confidence >= threshold);
+      let totalScanned = 0, totalSpam = 0, totalBlocked = 0, totalErrors = 0;
 
-      if (win) win.webContents.send('block:progress', { phase: 'predicting', total: comments.length, spam: spamComments.length });
+      for (let i = 0; i < targets.length; i++) {
+        const postUrl = targets[i];
+        const sessionId = db.createBlockSession(postUrl);
+        if (win) win.webContents.send('block:progress', { phase: 'status', text: `扫描第 ${i + 1}/${targets.length} 条帖子...` });
 
-      const result = await blocker.blockSpamUsers(url, spamComments, (progress) => {
-        if (win) win.webContents.send('block:progress', progress);
-      });
+        const { comments } = await scraper.scrapeComments(postUrl, (progress) => {
+          if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress, postIndex: i + 1, postTotal: targets.length });
+        });
 
-      db.completeBlockSession(sessionId, {
-        comments_scanned: comments.length,
-        spam_detected: spamComments.length,
-        users_blocked: result.blocked,
-        errors: result.errors,
-      });
+        if (comments.length === 0) {
+          db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
+          continue;
+        }
 
-      db.markMultipleBlockedInBlocklist(spamComments.map(c => c.username));
+        const predictions = await modelManager.predictBatch(
+          comments.map(c => ({ text: c.text, post_text: c.post_text }))
+        );
+        const spamComments = comments.filter((c, j) => predictions[j] && predictions[j].spam && predictions[j].confidence >= threshold);
+        totalScanned += comments.length;
+        totalSpam += spamComments.length;
 
-      return { success: true, scanned: comments.length, spam: spamComments.length, blocked: result.blocked, errors: result.errors };
+        if (win) win.webContents.send('block:progress', { phase: 'predicting', total: comments.length, spam: spamComments.length, postIndex: i + 1, postTotal: targets.length });
+
+        const result = await blocker.blockSpamUsers(postUrl, spamComments, (progress) => {
+          if (win) win.webContents.send('block:progress', progress);
+        });
+
+        totalBlocked += result.blocked;
+        totalErrors += result.errors;
+
+        db.completeBlockSession(sessionId, {
+          comments_scanned: comments.length,
+          spam_detected: spamComments.length,
+          users_blocked: result.blocked,
+          errors: result.errors,
+        });
+
+        db.markMultipleBlockedInBlocklist(spamComments.map(c => c.username));
+      }
+
+      if (win) win.webContents.send('block:progress', { phase: 'status', text: `全部完成: ${totalScanned} 条评论, ${totalSpam} 条垃圾, ${totalBlocked} 人拉黑` });
+
+      return { success: true, scanned: totalScanned, spam: totalSpam, blocked: totalBlocked, errors: totalErrors };
     } catch (e) {
       return { success: false, error: e.message };
     }

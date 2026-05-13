@@ -35,7 +35,7 @@ async function blockAllUsers(sourceUrl, comments, onProgress) {
       const { isUserBlocked } = require('./database');
       if (isUserBlocked(c.username)) continue;
 
-      const result = await blockUserOnPage(sessionId, c.username);
+      const result = await blockUserOnPage(sessionId, c.username, c.text);
       if (result) {
         blocked++;
         if (onProgress) onProgress({ phase: 'blocked', scanned, blocked, errors, total: comments.length, username: c.username });
@@ -84,7 +84,7 @@ async function blockSpamUsers(sourceUrl, comments, onProgress) {
       if (isUserBlocked(c.username)) continue;
 
       // Attempt to block via DOM interaction on the post page
-      const blocked = await blockUserOnPage(sessionId, c.username);
+      const blocked = await blockUserOnPage(sessionId, c.username, c.text);
       if (blocked) {
         blocked++;
         if (onProgress) onProgress({ phase: 'blocked', scanned, blocked, errors, total: comments.length, username: c.username });
@@ -102,7 +102,7 @@ async function blockSpamUsers(sourceUrl, comments, onProgress) {
   return { scanned, blocked, errors };
 }
 
-async function blockUserOnPage(sessionId, username) {
+async function blockUserOnPage(sessionId, username, reason) {
   // Strategy: find the comment article for this user, open "...", click "Block"
   const script = `
     (async function() {
@@ -153,7 +153,7 @@ async function blockUserOnPage(sessionId, username) {
   if (result && result.blocked) {
     const { addBlockedUser } = require('./database');
     const { getDb } = require('./database');
-    addBlockedUser(username, null);
+    addBlockedUser(username, null, reason || null);
     return true;
   }
 
@@ -193,7 +193,7 @@ async function blockByList(sourceUrl, comments, onProgress) {
       const { isUserBlocked } = require('./database');
       if (isUserBlocked(c.username)) continue;
 
-      const result = await blockUserOnPage(sessionId, c.username);
+      const result = await blockUserOnPage(sessionId, c.username, c.text);
       if (result) {
         blocked++;
         if (onProgress) onProgress({ phase: 'blocked', scanned, blocked, errors, total: comments.length, username: c.username });

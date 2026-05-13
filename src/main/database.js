@@ -98,6 +98,10 @@ async function initDatabase() {
   try { db.run('ALTER TABLE comments ADD COLUMN post_text TEXT'); } catch (e) { /* already exists */ }
   // Migration: add is_blocked column to blocklist
   try { db.run('ALTER TABLE blocklist ADD COLUMN is_blocked INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  // Migration: add block_reason column to blocked_users
+  try { db.run('ALTER TABLE blocked_users ADD COLUMN block_reason TEXT'); } catch (e) { /* already exists */ }
+  // Migration: add profile_url column to blocked_users
+  try { db.run('ALTER TABLE blocked_users ADD COLUMN profile_url TEXT'); } catch (e) { /* already exists */ }
 
   save();
   return db;
@@ -264,9 +268,18 @@ function isUserBlocked(username) {
   return exists;
 }
 
-function addBlockedUser(username, commentId) {
-  db.run('INSERT OR IGNORE INTO blocked_users (username, source_comment_id) VALUES (?, ?)', [username, commentId]);
+function addBlockedUser(username, commentId, reason) {
+  const profileUrl = username ? `https://x.com/${username}` : null;
+  db.run('INSERT OR IGNORE INTO blocked_users (username, source_comment_id, block_reason, profile_url) VALUES (?, ?, ?, ?)', [username, commentId, reason || null, profileUrl]);
   save();
+}
+
+function getBlockedUsers() {
+  const stmt = db.prepare('SELECT * FROM blocked_users ORDER BY blocked_at DESC');
+  const results = [];
+  while (stmt.step()) results.push(stmt.getAsObject());
+  stmt.free();
+  return results;
 }
 
 // ── Settings ───────────────────────────────────────────────
@@ -396,6 +409,7 @@ module.exports = {
   completeBlockSession,
   isUserBlocked,
   addBlockedUser,
+  getBlockedUsers,
   getBlocklist,
   addToBlocklist,
   removeFromBlocklist,
