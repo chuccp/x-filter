@@ -56,29 +56,21 @@ async function loadModel(modelPath) {
   }
 }
 
-/**
- * Build the input text for the classifier.
- * When post_text is available, concatenate with comment to assess relevance.
- */
 const emoji = require('node-emoji');
-
-function buildInput(text, postText) {
-  if (postText) {
-    return `[POST] ${emoji.demojify(postText)} [COMMENT] ${emoji.demojify(text)}`;
-  }
-  return emoji.demojify(text);
-}
 
 async function predict(text, postText) {
   if (!modelLoaded || !pipeline) {
     throw new Error(t('model.not_loaded'));
   }
-  const input = buildInput(text, postText);
-  const result = await pipeline(input);
-  // result looks like: [{ label: 'LABEL_0', score: 0.95 }]
-  // LABEL_1 = spam, LABEL_0 = not-spam
+  // @xenova/transformers pipeline only accepts strings / string arrays.
+  // It does NOT support {text, text_pair} objects or [post, comment] array pairs.
+  // We concatenate post + comment with a space to approximate dual-segment input.
+  const commentClean = emoji.unemojify(text);
+  const postClean = postText ? emoji.unemojify(postText) : '';
+  const inputText = postClean ? `${postClean} ${commentClean}` : commentClean;
+  const result = await pipeline(inputText);
   const top = result[0];
-  const spam = top.label === 'LABEL_1';
+  const spam = top.label === 'spam';
   const confidence = top.score;
   return { spam, confidence };
 }
@@ -87,19 +79,39 @@ async function predictBatch(items) {
   if (!modelLoaded || !pipeline) {
     throw new Error(t('model.not_loaded'));
   }
-  const results = [];
-  for (const item of items) {
-    try {
-      // item can be a string or {text, post_text} object
-      const text = typeof item === 'string' ? item : item.text;
-      const postText = typeof item === 'string' ? null : item.post_text;
-      const r = await predict(text, postText);
-      results.push(r);
-    } catch (e) {
-      results.push({ spam: false, confidence: 0, error: e.message });
+
+  // Build string inputs for batch inference
+  const inputs = items.map(item => {
+    const text = typeof item === 'string' ? item : item.text;
+    const postText = typeof item === 'string' ? null : item.post_text;
+    const commentClean = emoji.unemojify(text);
+    const postClean = postText ? emoji.unemojify(postText) : '';
+    return postClean ? `${postClean} ${commentClean}` : commentClean;
+  });
+
+  try {
+    const results = await pipeline(inputs);
+    return results.map(r => {
+      const top = Array.isArray(r) ? r[0] : r;
+      return {
+        spam: top.label === 'spam',
+        confidence: top.score,
+      };
+    });
+  } catch (e) {
+    // Fallback to sequential if batch inference fails
+    const results = [];
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const text = typeof items[i] === 'string' ? items[i] : items[i].text;
+        const postText = typeof items[i] === 'string' ? null : items[i].post_text;
+        results.push(await predict(text, postText));
+      } catch (err) {
+        results.push({ spam: false, confidence: 0, error: err.message });
+      }
     }
+    return results;
   }
-  return results;
 }
 
 function getStatus() {

@@ -7,7 +7,60 @@ const blocker = require('../x-blocker');
 const { t } = require('../i18n');
 
 function register() {
-  // ── Blocking ────────────────────────────────────────────────
+  async function resolveTargets(url, win) {
+    const targets = scraper.isProfileUrl(url)
+      ? await scraper.scrapeProfilePosts(url, (p) => {
+          if (win) win.webContents.send('block:progress', { phase: 'listing', ...p });
+        })
+      : [url];
+    return targets;
+  }
+
+  async function runBlockSession(win, postUrl, index, total, options) {
+    const { filterFn, afterFilter, afterBlock } = options;
+    const sessionId = db.createBlockSession(postUrl);
+    if (win) {
+      win.webContents.send('block:progress', {
+        phase: 'status',
+        text: t('block.scanning_post', { i: index + 1, total }),
+      });
+    }
+
+    const { comments } = await scraper.scrapeComments(postUrl, (progress) => {
+      if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress, postIndex: index + 1, postTotal: total });
+    });
+
+    if (comments.length === 0) {
+      db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
+      return { scanned: 0, matched: 0, blocked: 0, errors: 0 };
+    }
+
+    let matched = comments;
+    if (filterFn) {
+      matched = await filterFn(comments);
+    }
+
+    if (afterFilter) {
+      await afterFilter(comments, matched);
+    }
+
+    const result = await blocker.blockUsers(postUrl, matched, (progress) => {
+      if (win) win.webContents.send('block:progress', progress);
+    });
+
+    if (afterBlock) {
+      await afterBlock(matched, result);
+    }
+
+    db.completeBlockSession(sessionId, {
+      comments_scanned: comments.length,
+      spam_detected: matched.length,
+      users_blocked: result.blocked,
+      errors: result.errors,
+    });
+
+    return { scanned: comments.length, matched: matched.length, blocked: result.blocked, errors: result.errors };
+  }
 
   ipcMain.handle('block:start', async (event, url, options) => {
     try {
@@ -18,12 +71,7 @@ function register() {
         return { success: false, error: t('block.model_not_loaded') };
       }
 
-      const targets = scraper.isProfileUrl(url)
-        ? await scraper.scrapeProfilePosts(url, (p) => {
-            if (win) win.webContents.send('block:progress', { phase: 'listing', ...p });
-          })
-        : [url];
-
+      const targets = await resolveTargets(url, win);
       if (targets.length === 0) {
         return { success: true, scanned: 0, spam: 0, blocked: 0 };
       }
@@ -31,46 +79,43 @@ function register() {
       let totalScanned = 0, totalSpam = 0, totalBlocked = 0, totalErrors = 0;
 
       for (let i = 0; i < targets.length; i++) {
-        const postUrl = targets[i];
-        const sessionId = db.createBlockSession(postUrl);
-        if (win) win.webContents.send('block:progress', { phase: 'status', text: t('block.scanning_post', { i: i + 1, total: targets.length }) });
+        const filterFn = async (comments) => {
+          const predictions = await modelManager.predictBatch(
+            comments.map(c => ({ text: c.text, post_text: c.post_text }))
+          );
+          return comments.filter((c, j) => predictions[j] && predictions[j].spam && predictions[j].confidence >= threshold);
+        };
 
-        const { comments } = await scraper.scrapeComments(postUrl, (progress) => {
-          if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress, postIndex: i + 1, postTotal: targets.length });
+        const result = await runBlockSession(win, targets[i], i, targets.length, {
+          filterFn,
+          afterFilter: (comments, matched) => {
+            if (win) {
+              win.webContents.send('block:progress', {
+                phase: 'predicting',
+                total: comments.length,
+                spam: matched.length,
+                postIndex: i + 1,
+                postTotal: targets.length,
+              });
+            }
+          },
+          afterBlock: (matched) => {
+            db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
+          },
         });
 
-        if (comments.length === 0) {
-          db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
-          continue;
-        }
-
-        const predictions = await modelManager.predictBatch(
-          comments.map(c => ({ text: c.text, post_text: c.post_text }))
-        );
-        const spamComments = comments.filter((c, j) => predictions[j] && predictions[j].spam && predictions[j].confidence >= threshold);
-        totalScanned += comments.length;
-        totalSpam += spamComments.length;
-
-        if (win) win.webContents.send('block:progress', { phase: 'predicting', total: comments.length, spam: spamComments.length, postIndex: i + 1, postTotal: targets.length });
-
-        const result = await blocker.blockSpamUsers(postUrl, spamComments, (progress) => {
-          if (win) win.webContents.send('block:progress', progress);
-        });
-
+        totalScanned += result.scanned;
+        totalSpam += result.matched;
         totalBlocked += result.blocked;
         totalErrors += result.errors;
-
-        db.completeBlockSession(sessionId, {
-          comments_scanned: comments.length,
-          spam_detected: spamComments.length,
-          users_blocked: result.blocked,
-          errors: result.errors,
-        });
-
-        db.markMultipleBlockedInBlocklist(spamComments.map(c => c.username));
       }
 
-      if (win) win.webContents.send('block:progress', { phase: 'status', text: t('block.all_done', { scanned: totalScanned, spam: totalSpam, blocked: totalBlocked }) });
+      if (win) {
+        win.webContents.send('block:progress', {
+          phase: 'status',
+          text: t('block.all_done', { scanned: totalScanned, spam: totalSpam, blocked: totalBlocked }),
+        });
+      }
 
       return { success: true, scanned: totalScanned, spam: totalSpam, blocked: totalBlocked, errors: totalErrors };
     } catch (e) {
@@ -80,32 +125,24 @@ function register() {
 
   ipcMain.handle('block:all', async (event, url) => {
     try {
-      const sessionId = db.createBlockSession(url);
       const win = BrowserWindow.fromWebContents(event.sender);
+      const targets = await resolveTargets(url, win);
 
-      const { comments } = await scraper.scrapeComments(url, (progress) => {
-        if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress });
-      });
+      let totalScanned = 0, totalBlocked = 0, totalErrors = 0;
 
-      if (comments.length === 0) {
-        db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
-        return { success: true, scanned: 0, blocked: 0 };
+      for (let i = 0; i < targets.length; i++) {
+        const result = await runBlockSession(win, targets[i], i, targets.length, {
+          afterBlock: (matched) => {
+            db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
+          },
+        });
+
+        totalScanned += result.scanned;
+        totalBlocked += result.blocked;
+        totalErrors += result.errors;
       }
 
-      const result = await blocker.blockAllUsers(url, comments, (progress) => {
-        if (win) win.webContents.send('block:progress', progress);
-      });
-
-      db.completeBlockSession(sessionId, {
-        comments_scanned: comments.length,
-        spam_detected: comments.length,
-        users_blocked: result.blocked,
-        errors: result.errors,
-      });
-
-      db.markMultipleBlockedInBlocklist(comments.map(c => c.username));
-
-      return { success: true, scanned: comments.length, blocked: result.blocked, errors: result.errors };
+      return { success: true, scanned: totalScanned, blocked: totalBlocked, errors: totalErrors };
     } catch (e) {
       return { success: false, error: e.message };
     }
@@ -228,43 +265,31 @@ function register() {
       if (entries.length === 0) {
         return { success: false, error: t('blocklist.empty_error') };
       }
-      const blocklist = entries.map(e => e.username);
-      const sessionId = db.createBlockSession(url);
+      const blocklist = entries.map(e => e.username.toLowerCase());
       const win = BrowserWindow.fromWebContents(event.sender);
 
-      const { comments } = await scraper.scrapeComments(url, (progress) => {
-        if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress });
-      });
+      const targets = await resolveTargets(url, win);
 
-      if (comments.length === 0) {
-        db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
-        return { success: true, scanned: 0, blocked: 0 };
+      let totalScanned = 0, totalMatched = 0, totalBlocked = 0, totalErrors = 0;
+
+      for (let i = 0; i < targets.length; i++) {
+        const result = await runBlockSession(win, targets[i], i, targets.length, {
+          filterFn: (comments) => comments.filter(c => {
+            const u = (c.username || '').toLowerCase();
+            return blocklist.some(b => b === u);
+          }),
+          afterBlock: (matched) => {
+            db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
+          },
+        });
+
+        totalScanned += result.scanned;
+        totalMatched += result.matched;
+        totalBlocked += result.blocked;
+        totalErrors += result.errors;
       }
 
-      const matched = comments.filter(c => {
-        const u = (c.username || '').toLowerCase();
-        return blocklist.some(b => b.toLowerCase() === u);
-      });
-
-      if (matched.length === 0) {
-        db.completeBlockSession(sessionId, { comments_scanned: comments.length, spam_detected: 0, users_blocked: 0, errors: 0 });
-        return { success: true, scanned: comments.length, matched: 0, blocked: 0 };
-      }
-
-      db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
-
-      const result = await blocker.blockByList(url, matched, (progress) => {
-        if (win) win.webContents.send('block:progress', progress);
-      });
-
-      db.completeBlockSession(sessionId, {
-        comments_scanned: comments.length,
-        spam_detected: matched.length,
-        users_blocked: result.blocked,
-        errors: result.errors,
-      });
-
-      return { success: true, scanned: comments.length, matched: matched.length, blocked: result.blocked, errors: result.errors };
+      return { success: true, scanned: totalScanned, matched: totalMatched, blocked: totalBlocked, errors: totalErrors };
     } catch (e) {
       return { success: false, error: e.message };
     }

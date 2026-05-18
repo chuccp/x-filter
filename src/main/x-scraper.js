@@ -1,4 +1,5 @@
 const cdp = require('./cdp-manager');
+const { getAllSettings } = require('./database');
 const { t } = require('./i18n');
 
 let cancelFlag = false;
@@ -32,7 +33,7 @@ async function scrapeProfilePosts(profileUrl, onProgress) {
 }
 
 async function scrapeProfileWithSession(sessionId, profileUrl, onProgress) {
-  const settings = require('./database').getAllSettings();
+  const settings = getAllSettings();
   const maxScroll = parseInt(settings.max_scroll) || 50;
   const scrollDelay = parseInt(settings.scroll_delay) || 500;
 
@@ -115,7 +116,7 @@ async function scrapeComments(url, onProgress) {
 }
 
 async function scrapeWithSession(sessionId, url, onProgress) {
-  const settings = require('./database').getAllSettings();
+  const settings = getAllSettings();
   const maxScroll = parseInt(settings.max_scroll) || 50;
   const scrollDelay = parseInt(settings.scroll_delay) || 500;
 
@@ -220,8 +221,9 @@ async function scrapeWithSession(sessionId, url, onProgress) {
           if (!postText) postText = c.text;
           continue;
         }
-        if (c.text && !seenTexts.has(c.text)) {
-          seenTexts.add(c.text);
+        const normalized = normalizeText(c.text);
+        if (c.text && !seenTexts.has(normalized)) {
+          seenTexts.add(normalized);
           c.post_text = postText;
           comments.push(c);
           newComments.push({ text: c.text, username: c.username });
@@ -251,6 +253,11 @@ async function scrapeWithSession(sessionId, url, onProgress) {
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function normalizeText(text) {
+  if (!text) return '';
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 module.exports = { scrapeComments, scrapeProfilePosts, isProfileUrl, cancel };

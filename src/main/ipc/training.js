@@ -1,129 +1,13 @@
 const { ipcMain, BrowserWindow, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn, execSync } = require('child_process');
+const { spawn } = require('child_process');
 const db = require('../database');
 const modelManager = require('../model-manager');
+const { getPythonCommand, checkCuda } = require('../python-utils');
 const { t } = require('../i18n');
 
 let trainingProcess = null;
-let downloadProcess = null;
-
-// Use execSync to reliably resolve PATH through cmd.exe
-function tryExec(cmd) {
-  try {
-    return execSync(`"${cmd}" --version`, { encoding: 'utf-8', shell: true, stdio: 'pipe' }).trim();
-  } catch (e) {
-    return null;
-  }
-}
-
-function findPythonInPaths(paths) {
-  for (const p of paths) {
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-}
-
-function getPythonFromWhere() {
-  // Use cmd.exe's "where" to locate python in PATH
-  try {
-    const paths = ['python', 'python3', 'py'];
-    for (const name of paths) {
-      const result = execSync(`where ${name} 2>nul`, { encoding: 'utf-8', shell: true, stdio: 'pipe' }).trim();
-      if (result) {
-        const firstLine = result.split('\n')[0].trim();
-        if (fs.existsSync(firstLine)) return firstLine;
-      }
-    }
-  } catch (e) { /* not found */ }
-  return null;
-}
-
-async function getPythonCommand() {
-  // 1. Use cmd.exe "where" to locate python (most reliable PATH resolution)
-  let cmd = getPythonFromWhere();
-  if (cmd) {
-    const ver = tryExec(cmd);
-    if (ver) return { cmd, version: ver, source: 'system' };
-  }
-
-  // 2. On macOS, scan Homebrew paths first (prefer Python 3.12+)
-  if (process.platform === 'darwin') {
-    const homebrewPaths = [
-      '/opt/homebrew/opt/x-filter-venv/bin/python3',
-      '/opt/homebrew/bin/python3.12',
-      '/opt/homebrew/bin/python3',
-      '/usr/local/bin/python3.12',
-      '/usr/local/bin/python3',
-    ];
-    const found = findPythonInPaths(homebrewPaths);
-    if (found) {
-      const ver = tryExec(found);
-      if (ver) return { cmd: found, version: ver, source: 'homebrew' };
-    }
-  }
-
-  // 3. Try commands via execSync (shell PATH)
-  if (process.platform === 'win32') {
-    const names = ['python', 'python3', 'py'];
-    for (const name of names) {
-      const ver = tryExec(name);
-      if (ver) return { cmd: name, version: ver, source: 'system' };
-    }
-  } else {
-    for (const name of ['python3', 'python']) {
-      const ver = tryExec(name);
-      if (ver) return { cmd: name, version: ver, source: 'system' };
-    }
-  }
-
-  // 4. Fallback: scan common Windows install directories
-  if (process.platform === 'win32') {
-    const home = process.env.USERPROFILE || '';
-    const versions = ['313', '312', '311', '310', '39', '38'];
-    const searchPaths = [];
-    for (const v of versions) {
-      searchPaths.push(
-        `C:\\Python${v}\\python.exe`,
-        `C:\\Program Files\\Python${v}\\python.exe`,
-        path.join(home, `AppData\\Local\\Programs\\Python\\Python${v}\\python.exe`),
-        path.join(home, `AppData\\Local\\Microsoft\\WindowsApps\\python.exe`),
-        path.join(home, `AppData\\Local\\Microsoft\\WindowsApps\\python3.exe`),
-      );
-    }
-    const found = findPythonInPaths(searchPaths);
-    if (found) {
-      const ver = tryExec(found);
-      if (ver) return { cmd: found, version: ver, source: 'detected' };
-    }
-  }
-
-  return null;
-}
-
-function checkCuda() {
-  try {
-    const out = execSync('nvidia-smi', { encoding: 'utf-8', shell: true, stdio: 'pipe' });
-    // Parse CUDA version from line like "CUDA Version: 13.1"
-    const m = out.match(/CUDA Version:\s*(\d+\.\d+)/i);
-    if (m) {
-      const ver = m[1];
-      const major = parseInt(ver.split('.')[0], 10);
-      const minor = parseInt(ver.split('.')[1] || '0', 10);
-      let cudaTag;
-      if (major >= 13) cudaTag = 'cu130';
-      else if (major >= 12) {
-        if (minor >= 8) cudaTag = 'cu128';
-        else if (minor >= 4) cudaTag = 'cu124';
-        else cudaTag = 'cu121';
-      } else if (major >= 11) cudaTag = 'cu118';
-      else return { available: false };
-      return { available: true, version: ver, cudaTag };
-    }
-  } catch (e) { /* nvidia-smi not found */ }
-  return { available: false };
-}
 
 function register() {
   const projectRoot = path.join(__dirname, '..', '..', '..');
@@ -276,8 +160,21 @@ function register() {
       const csvDir = path.join(__dirname, '..', '..', '..', 'data');
       fs.mkdirSync(csvDir, { recursive: true });
       const csvPath = path.join(csvDir, 'labeled.csv');
+
+      function escapeCsvField(field) {
+        if (field == null) return '';
+        return field
+          .replace(/\r\n/g, '\n')
+          .replace(/\r/g, '\n')
+          .replace(/"/g, '""');
+      }
+
       const header = 'text,post_text,label\n';
-      const csvRows = rows.map(r => `"${r.text.replace(/"/g, '""')}","${(r.post_text || '').replace(/"/g, '""')}",${r.label}`).join('\n');
+      const csvRows = rows.map(r => {
+        const text = escapeCsvField(r.text);
+        const postText = escapeCsvField(r.post_text);
+        return `"${text}","${postText}",${r.label}`;
+      }).join('\n');
       fs.writeFileSync(csvPath, header + csvRows);
 
       if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.exported', { count: rows.length }) });
@@ -312,8 +209,9 @@ function register() {
       const pretrainedDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
       const hasPretrained = fs.existsSync(path.join(pretrainedDir, 'config.json'));
       const modelArg = hasPretrained ? pretrainedDir : 'bert-base-multilingual-cased';
-      const epochs = options?.epochs || 50;
+      const epochs = options?.epochs || 20;
       const batchSize = options?.batchSize || 32;
+      const gradAccum = options?.gradientAccumulationSteps || 1;
 
       trainingProcess = spawn(py.cmd, [
         trainScript,
@@ -322,8 +220,15 @@ function register() {
         '--model', modelArg,
         '--epochs', String(epochs),
         '--batch-size', String(batchSize),
+        '--gradient-accumulation-steps', String(gradAccum),
       ], {
         cwd: path.dirname(trainScript),
+        env: {
+          ...process.env,
+          LC_ALL: 'C',
+          LANG: 'en_US.UTF-8',
+          PYTHONIOENCODING: 'utf-8',
+        },
       });
 
       trainingProcess.stdout.on('data', (data) => {
@@ -368,6 +273,17 @@ function register() {
 
       if (exitCode === 0) {
         if (win) win.webContents.send('train:progress', { type: 'status', text: t('train.training_complete') });
+
+        // Copy trained model to project checkpoints directory for easy dev loading
+        const checkpointDir = path.join(projectRoot, 'checkpoints', 'x-spam-classifier');
+        try {
+          fs.mkdirSync(checkpointDir, { recursive: true });
+          fs.cpSync(modelDir, checkpointDir, { recursive: true, force: true });
+          if (win) win.webContents.send('train:progress', { type: 'status', text: `Model copied to ${checkpointDir}` });
+        } catch (e) {
+          if (win) win.webContents.send('train:progress', { type: 'log', text: `[warn] Copy to checkpoints failed: ${e.message}` });
+        }
+
         try {
           const loadResult = await modelManager.loadModel(modelDir);
           if (win) {
@@ -398,118 +314,6 @@ function register() {
     return { success: true };
   });
 
-  // ── Pretrained model download ──────────────────────────────────
-
-  ipcMain.handle('model:download-status', async () => {
-    const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
-    const dirExists = fs.existsSync(modelDir);
-    const hasFiles = dirExists && fs.readdirSync(modelDir).length > 0;
-
-    // Check for essential model files: config, weights, tokenizer, vocab
-    const requiredFiles = [
-      'config.json',
-      'tokenizer_config.json',
-      'vocab.txt',
-    ];
-    // Weights: at least one of model.safetensors or pytorch_model.bin
-    const hasWeights = fs.existsSync(path.join(modelDir, 'model.safetensors'))
-      || fs.existsSync(path.join(modelDir, 'pytorch_model.bin'));
-
-    const missing = [];
-    for (const f of requiredFiles) {
-      if (!fs.existsSync(path.join(modelDir, f))) missing.push(f);
-    }
-    if (!hasWeights) missing.push('model weights (model.safetensors or pytorch_model.bin)');
-
-    const complete = missing.length === 0;
-    return {
-      downloaded: complete,
-      partial: hasFiles && !complete,
-      missing,
-      path: modelDir,
-    };
-  });
-
-  ipcMain.handle('model:download', async (event, force) => {
-    try {
-      const win = BrowserWindow.fromWebContents(event.sender);
-      const py = await getPythonCommand();
-      if (!py) return { success: false, error: t('train.python_not_found_error') };
-
-      const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
-
-      const script = path.join(projectRoot, 'download_model.py');
-      if (!fs.existsSync(script)) {
-        return { success: false, error: t('train.download_script_not_found') };
-      }
-
-      if (win) win.webContents.send('model-download:progress', { type: 'status', text: force ? t('train.download_status_force') : t('train.download_status') });
-
-      const spawnArgs = [
-        script,
-        '--output', modelDir,
-        '--model', 'bert-base-multilingual-cased',
-      ];
-      if (force) spawnArgs.push('--force');
-
-      downloadProcess = spawn(py.cmd, spawnArgs, {
-        cwd: path.dirname(script),
-      });
-
-      downloadProcess.stdout.on('data', (data) => {
-        const lines = data.toString().trim().split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          if (win) {
-            if (line.startsWith('[STATUS]')) {
-              win.webContents.send('model-download:progress', { type: 'status', text: line.slice(9) });
-            } else if (line.startsWith('[PROGRESS]')) {
-              try {
-                const info = JSON.parse(line.slice(11));
-                win.webContents.send('model-download:progress', { type: 'progress', ...info });
-              } catch (e) { /* ignore */ }
-            } else {
-              win.webContents.send('model-download:progress', { type: 'log', text: line });
-            }
-          }
-        }
-      });
-
-      downloadProcess.stderr.on('data', (data) => {
-        const text = data.toString().trim();
-        if (text && win) {
-          if (text.includes('UserWarning') || text.includes('warnings.warn')) {
-            win.webContents.send('model-download:progress', { type: 'log', text: '[warn] ' + text });
-          } else {
-            win.webContents.send('model-download:progress', { type: 'log', text: '[stderr] ' + text });
-          }
-        }
-      });
-
-      const exitCode = await new Promise((resolve) => {
-        downloadProcess.on('close', resolve);
-      });
-      downloadProcess = null;
-
-      if (exitCode === 0) {
-        if (win) win.webContents.send('model-download:progress', { type: 'status', text: t('train.download_done') });
-        return { success: true, path: modelDir };
-      } else {
-        return { success: false, error: t('train.download_exit', { code: exitCode }) };
-      }
-    } catch (e) {
-      downloadProcess = null;
-      return { success: false, error: e.message };
-    }
-  });
-
-  ipcMain.handle('model:download-cancel', async () => {
-    if (downloadProcess) {
-      downloadProcess.kill();
-      downloadProcess = null;
-    }
-    return { success: true };
-  });
 }
 
 module.exports = { register };

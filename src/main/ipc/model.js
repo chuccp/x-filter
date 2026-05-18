@@ -3,28 +3,11 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const modelManager = require('../model-manager');
+const { getPythonCommand } = require('../python-utils');
 const { t } = require('../i18n');
 
 let downloadProcess = null;
-
-function getPythonCommand() {
-  const { execSync } = require('child_process');
-  try {
-    const names = process.platform === 'win32' ? ['python', 'python3', 'py'] : ['python3', 'python'];
-    for (const name of names) {
-      const cmd = process.platform === 'win32'
-        ? execSync(`where ${name} 2>nul`, { encoding: 'utf-8', shell: true, stdio: 'pipe' }).trim().split('\n')[0].trim()
-        : name;
-      if (cmd && fs.existsSync(cmd)) {
-        try {
-          execSync(`"${cmd}" --version`, { encoding: 'utf-8', shell: true, stdio: 'pipe' });
-          return cmd;
-        } catch (e) { /* try next */ }
-      }
-    }
-  } catch (e) { /* ignore */ }
-  return null;
-}
+let pretrainedDownloadProcess = null;
 
 function register() {
   ipcMain.handle('model:load', async (event, modelPath) => {
@@ -75,7 +58,7 @@ function register() {
       const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
       const repoId = repo || 'chuccp/x-spam-classifier';
 
-      downloadProcess = spawn(py, [
+      downloadProcess = spawn(py.cmd, [
         script,
         '--repo', repoId,
         '--output', modelDir,
@@ -163,7 +146,7 @@ function register() {
       const env = { ...process.env };
       if (token) env.HF_TOKEN = token;
 
-      downloadProcess = spawn(py, [
+      downloadProcess = spawn(py.cmd, [
         script,
         '--repo', repoId,
         '--input', modelDir,
@@ -205,6 +188,119 @@ function register() {
       downloadProcess = null;
       return { success: false, error: e.message };
     }
+  });
+
+  // ── Pretrained model download (bert-base-multilingual-cased) ──
+
+  ipcMain.handle('model:download-status', async () => {
+    const projectRoot = path.join(__dirname, '..', '..', '..');
+    const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
+    const dirExists = fs.existsSync(modelDir);
+    const hasFiles = dirExists && fs.readdirSync(modelDir).length > 0;
+
+    const requiredFiles = [
+      'config.json',
+      'tokenizer_config.json',
+      'vocab.txt',
+    ];
+    const hasWeights = fs.existsSync(path.join(modelDir, 'model.safetensors'))
+      || fs.existsSync(path.join(modelDir, 'pytorch_model.bin'));
+
+    const missing = [];
+    for (const f of requiredFiles) {
+      if (!fs.existsSync(path.join(modelDir, f))) missing.push(f);
+    }
+    if (!hasWeights) missing.push('model weights (model.safetensors or pytorch_model.bin)');
+
+    const complete = missing.length === 0;
+    return {
+      downloaded: complete,
+      partial: hasFiles && !complete,
+      missing,
+      path: modelDir,
+    };
+  });
+
+  ipcMain.handle('model:download', async (event, force) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const py = getPythonCommand();
+      if (!py) return { success: false, error: t('train.python_not_found_error') };
+
+      const projectRoot = path.join(__dirname, '..', '..', '..');
+      const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
+
+      const script = path.join(projectRoot, 'download_model.py');
+      if (!fs.existsSync(script)) {
+        return { success: false, error: t('train.download_script_not_found') };
+      }
+
+      if (win) win.webContents.send('model-download:progress', { type: 'status', text: force ? t('train.download_status_force') : t('train.download_status') });
+
+      const spawnArgs = [
+        script,
+        '--output', modelDir,
+        '--model', 'bert-base-multilingual-cased',
+      ];
+      if (force) spawnArgs.push('--force');
+
+      pretrainedDownloadProcess = spawn(py.cmd, spawnArgs, {
+        cwd: path.dirname(script),
+      });
+
+      pretrainedDownloadProcess.stdout.on('data', (data) => {
+        const lines = data.toString().trim().split('\n');
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          if (win) {
+            if (line.startsWith('[STATUS]')) {
+              win.webContents.send('model-download:progress', { type: 'status', text: line.slice(9) });
+            } else if (line.startsWith('[PROGRESS]')) {
+              try {
+                const info = JSON.parse(line.slice(11));
+                win.webContents.send('model-download:progress', { type: 'progress', ...info });
+              } catch (e) { /* ignore */ }
+            } else {
+              win.webContents.send('model-download:progress', { type: 'log', text: line });
+            }
+          }
+        }
+      });
+
+      pretrainedDownloadProcess.stderr.on('data', (data) => {
+        const text = data.toString().trim();
+        if (text && win) {
+          if (text.includes('UserWarning') || text.includes('warnings.warn')) {
+            win.webContents.send('model-download:progress', { type: 'log', text: '[warn] ' + text });
+          } else {
+            win.webContents.send('model-download:progress', { type: 'log', text: '[stderr] ' + text });
+          }
+        }
+      });
+
+      const exitCode = await new Promise((resolve) => {
+        pretrainedDownloadProcess.on('close', resolve);
+      });
+      pretrainedDownloadProcess = null;
+
+      if (exitCode === 0) {
+        if (win) win.webContents.send('model-download:progress', { type: 'status', text: t('train.download_done') });
+        return { success: true, path: modelDir };
+      } else {
+        return { success: false, error: t('train.download_exit', { code: exitCode }) };
+      }
+    } catch (e) {
+      pretrainedDownloadProcess = null;
+      return { success: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('model:download-cancel', async () => {
+    if (pretrainedDownloadProcess) {
+      pretrainedDownloadProcess.kill();
+      pretrainedDownloadProcess = null;
+    }
+    return { success: true };
   });
 }
 
