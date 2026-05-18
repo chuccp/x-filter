@@ -142,6 +142,19 @@ export default class UserBlockView {
       return;
     }
 
+    // Pre-check Chrome connection
+    const cdpStatus = await apiInvoke('cdp:status');
+    if (!cdpStatus.connected) {
+      const statusEl = document.getElementById('block-status');
+      statusEl.className = 'status-line error';
+      statusEl.innerHTML = t('block.not_connected')
+        + ` <button class="btn btn-sm" id="btn-goto-connect" style="margin-left:8px">${t('block.btn_goto_connect')}</button>`;
+      document.getElementById('btn-goto-connect').onclick = () => {
+        document.querySelector('.nav-item[data-view="connect"]')?.click();
+      };
+      return;
+    }
+
     this.blocking = true;
     document.getElementById('btn-block-start').style.display = 'none';
     document.getElementById('btn-block-cancel').style.display = 'inline-flex';
@@ -188,11 +201,27 @@ export default class UserBlockView {
     const log = document.getElementById('block-log');
     const logLine = el('div', { className: 'log-line' });
 
-    if (p.phase === 'scraping') {
+    if (p.phase === 'listing') {
+      document.getElementById('block-bar').style.background = 'var(--primary)';
+      document.getElementById('block-bar').style.width = '50%';
+      document.getElementById('block-progress-text').textContent =
+        t('block.listing_progress', { posts: p.posts, scroll: p.scroll });
+      logLine.textContent = t('block.listing_log', { posts: p.posts });
+      log.appendChild(logLine);
+      log.scrollTop = log.scrollHeight;
+      return;
+    } else if (p.phase === 'status') {
+      logLine.textContent = p.text;
+      logLine.className += ' success';
+      log.appendChild(logLine);
+      log.scrollTop = log.scrollHeight;
+      return;
+    } else if (p.phase === 'scraping') {
       const pct = p.total > 0 ? Math.round((p.scroll / p.total) * 100) : 0;
+      document.getElementById('block-bar').style.background = 'var(--primary)';
       document.getElementById('block-bar').style.width = pct + '%';
       document.getElementById('block-progress-text').textContent =
-        t('block.scraping_progress', { found: p.found, scroll: p.scroll });
+        t('block.scraping_progress', { found: p.found, scroll: p.scroll, current: p.postIndex || 1, totalPosts: p.postTotal || 1 });
       logLine.textContent = t('block.scraping_log', { found: p.found });
       log.appendChild(logLine);
 

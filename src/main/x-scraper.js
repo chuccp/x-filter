@@ -40,6 +40,19 @@ async function scrapeProfileWithSession(sessionId, profileUrl, onProgress) {
     await cdp.navigatePage(sessionId, profileUrl);
     await cdp.waitForSelector(sessionId, 'article[data-testid="tweet"]', 30000);
 
+    if (cancelFlag) return [];
+
+    // Check if we're on a login wall
+    const isLoggedIn = await cdp.evaluate(sessionId,
+      '!!document.querySelector(\'article[data-testid="tweet"]\')'
+    );
+    if (!isLoggedIn) {
+      const hasLogin = await cdp.evaluate(sessionId,
+        'document.body.innerText.includes("Sign in") || document.body.innerText.includes("Log in")'
+      );
+      if (hasLogin) throw new Error(t('scrape.login_required'));
+    }
+
     const postUrls = new Set();
     let noNewCount = 0;
     const maxNoNew = 5;

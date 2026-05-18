@@ -54,9 +54,9 @@ export default class AdminTrainView {
         el('span', { id: 'train-data-stats', style: 'margin-left:12px;font-size:12px;color:var(--text-muted)' }),
         el('div', { style: 'margin-left:auto;display:flex;align-items:center;gap:6px' },
           el('label', { style: 'font-size:12px;color:var(--text-dim)' }, t('train.epochs_label')),
-          el('input', { type: 'number', id: 'train-epochs', value: '50', min: '1', max: '200', style: 'width:56px;font-size:13px' }),
+          el('input', { type: 'number', id: 'train-epochs', value: '20', min: '1', max: '200', style: 'width:80px;font-size:13px' }),
           el('label', { style: 'font-size:12px;color:var(--text-dim);margin-left:6px' }, t('train.batch_size_label')),
-          el('input', { type: 'number', id: 'train-batch-size', value: '32', min: '4', max: '128', step: '4', style: 'width:56px;font-size:13px' }),
+          el('input', { type: 'number', id: 'train-batch-size', value: '32', min: '4', max: '128', step: '4', style: 'width:80px;font-size:13px' }),
           el('button', { className: 'btn btn-primary btn-sm', id: 'btn-train' }, t('train.btn_train_text')),
           el('button', { className: 'btn btn-outline btn-sm', id: 'btn-cancel-train', style: 'display:none' }, t('train.btn_cancel')),
         ),
@@ -146,6 +146,9 @@ export default class AdminTrainView {
       items.push(`<div class="log-line success" style="display:flex;align-items:center;gap:8px">
         <span style="color:var(--success);font-size:16px">✔</span>
         <span>${t('train.python_ok')} <span style="color:var(--text-muted)">${env.pythonVersion}</span></span>
+      </div>
+      <div class="log-line" style="font-size:11px;color:var(--text-dim);padding-left:24px">
+        <code style="font-size:11px;word-break:break-all;background:var(--bg);padding:2px 6px;border-radius:4px">${env.pythonCmd}</code>
       </div>`);
     } else {
       items.push(`<div class="log-line" style="display:flex;align-items:center;gap:8px;color:var(--danger)">
@@ -435,7 +438,7 @@ export default class AdminTrainView {
     document.getElementById('train-progress-text').textContent = t('train.starting');
     this.logCard.style.display = 'flex';
 
-    const epochs = parseInt(document.getElementById('train-epochs').value) || 50;
+    const epochs = parseInt(document.getElementById('train-epochs').value) || 20;
     const batchSize = parseInt(document.getElementById('train-batch-size').value) || 32;
     const res = await apiInvoke('train:start', { epochs, batchSize });
     this.training = false;

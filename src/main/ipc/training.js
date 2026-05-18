@@ -223,8 +223,8 @@ function register() {
 
       // Install each package individually so one failure doesn't block others
       const pkgs = cuda.available
-        ? ['transformers', 'accelerate>=0.26.0', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas', 'huggingface_hub']
-        : ['transformers', 'torch', 'accelerate>=0.26.0', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas', 'huggingface_hub'];
+        ? ['transformers', 'accelerate>=0.26.0', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas', 'huggingface_hub', 'emoji']
+        : ['transformers', 'torch', 'accelerate>=0.26.0', 'datasets', 'optimum[onnxruntime]', 'scikit-learn', 'pandas', 'huggingface_hub', 'emoji'];
 
       let failed = [];
       for (const pkg of pkgs) {

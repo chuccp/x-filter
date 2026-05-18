@@ -60,11 +60,13 @@ async function loadModel(modelPath) {
  * Build the input text for the classifier.
  * When post_text is available, concatenate with comment to assess relevance.
  */
+const emoji = require('node-emoji');
+
 function buildInput(text, postText) {
   if (postText) {
-    return `[POST] ${postText} [COMMENT] ${text}`;
+    return `[POST] ${emoji.demojify(postText)} [COMMENT] ${emoji.demojify(text)}`;
   }
-  return text;
+  return emoji.demojify(text);
 }
 
 async function predict(text, postText) {

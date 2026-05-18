@@ -215,6 +215,13 @@ export default class UserBlocklistView {
       return;
     }
 
+    // Pre-check Chrome connection
+    const cdpStatus = await apiInvoke('cdp:status');
+    if (!cdpStatus.connected) {
+      showStatus('modal-block-status', t('block.not_connected'), false);
+      return;
+    }
+
     this.blocking = true;
     document.getElementById('modal-block-start').style.display = 'none';
     document.getElementById('modal-block-cancel-btn').style.display = 'inline-flex';
@@ -257,11 +264,21 @@ export default class UserBlocklistView {
     const log = document.getElementById('modal-block-log');
     const logLine = el('div', { className: 'log-line' });
 
-    if (p.phase === 'scraping') {
+    if (p.phase === 'listing') {
+      document.getElementById('modal-block-bar').style.background = 'var(--primary)';
+      document.getElementById('modal-block-bar').style.width = '50%';
+      document.getElementById('modal-block-progress-text').textContent =
+        t('block.listing_progress', { posts: p.posts, scroll: p.scroll });
+      logLine.textContent = t('block.listing_log', { posts: p.posts });
+    } else if (p.phase === 'status') {
+      logLine.textContent = p.text;
+      logLine.className += ' success';
+    } else if (p.phase === 'scraping') {
       const pct = p.total > 0 ? Math.round((p.scroll / p.total) * 100) : 0;
+      document.getElementById('modal-block-bar').style.background = 'var(--primary)';
       document.getElementById('modal-block-bar').style.width = pct + '%';
       document.getElementById('modal-block-progress-text').textContent =
-        t('block.scraping_progress', { found: p.found, scroll: p.scroll });
+        t('block.scraping_progress', { found: p.found, scroll: p.scroll, current: 1, totalPosts: 1 });
       logLine.textContent = t('block.scraping_log', { found: p.found });
     } else if (p.phase === 'blocking') {
       const pct = p.total > 0 ? Math.round((p.scanned / p.total) * 100) : 0;

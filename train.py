@@ -20,6 +20,7 @@ import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, precision_score, recall_score
+import emoji
 import torch
 from transformers import (
     AutoTokenizer,
@@ -81,9 +82,10 @@ def load_data(csv_path):
     has_post = "post_text" in df.columns
     texts = []
     for _, row in df.iterrows():
-        comment = str(row["text"])
+        comment = emoji.demojize(str(row["text"]))
         if has_post and pd.notna(row.get("post_text")) and str(row["post_text"]).strip():
-            texts.append(f"[POST] {str(row['post_text']).strip()} [COMMENT] {comment}")
+            post = emoji.demojize(str(row["post_text"]).strip())
+            texts.append(f"[POST] {post} [COMMENT] {comment}")
         else:
             texts.append(comment)
     labels = df["label"].astype(int).tolist()
