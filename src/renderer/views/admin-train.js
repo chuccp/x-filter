@@ -585,63 +585,6 @@ export default class AdminTrainView {
         btn.style.opacity = '1';
       }
     }
-
-    // Upload button — show if model loaded in memory
-    this.refreshUploadActions();
-  }
-
-  async refreshUploadActions() {
-    const modelRes = await apiInvoke('model:status');
-    const actionsEl = document.getElementById('trained-model-actions');
-    if (actionsEl) {
-      // Append upload section after load button (don't replace load btn)
-      const existingUpload = document.getElementById('upload-section');
-      if (modelRes.loaded && modelRes.metrics) {
-        if (!existingUpload) {
-          const uploadDiv = el(
-            'div',
-            {
-              id: 'upload-section',
-              style:
-                'margin-top:12px;padding-top:12px;border-top:1px solid var(--border)',
-            },
-            el(
-              'div',
-              {
-                style:
-                  'font-size:12px;color:var(--text-muted);margin-bottom:6px',
-              },
-              t('train.upload_ready'),
-            ),
-            el(
-              'div',
-              {
-                style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap',
-              },
-              el('input', {
-                type: 'text',
-                id: 'hf-token-input',
-                placeholder: 'HF_TOKEN (hf_xxx)',
-                style:
-                  'width:260px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)',
-              }),
-              el(
-                'button',
-                {
-                  className: 'btn btn-primary btn-sm',
-                  id: 'btn-upload-hf',
-                  onClick: () => this.uploadToHF(),
-                },
-                t('train.btn_upload_hf'),
-              ),
-            ),
-          );
-          actionsEl.appendChild(uploadDiv);
-        }
-      } else {
-        if (existingUpload) existingUpload.remove();
-      }
-    }
   }
 
   // ── Trained model check ────────────────────────────────────
@@ -750,9 +693,47 @@ export default class AdminTrainView {
         );
         actionsEl.appendChild(hint);
       }
-    }
 
-    this.refreshUploadActions();
+      // HF upload section — always show when trained model exists on disk
+      const uploadDiv = el(
+        'div',
+        {
+          id: 'upload-section',
+          style:
+            'margin-top:12px;padding-top:12px;border-top:1px solid var(--border)',
+        },
+        el(
+          'div',
+          {
+            style: 'font-size:12px;color:var(--text-muted);margin-bottom:6px',
+          },
+          t('train.upload_ready'),
+        ),
+        el(
+          'div',
+          {
+            style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap',
+          },
+          el('input', {
+            type: 'text',
+            id: 'hf-token-input',
+            placeholder: 'HF_TOKEN (hf_xxx)',
+            style:
+              'width:260px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)',
+          }),
+          el(
+            'button',
+            {
+              className: 'btn btn-primary btn-sm',
+              id: 'btn-upload-hf',
+              onClick: () => this.uploadToHF(),
+            },
+            t('train.btn_upload_hf'),
+          ),
+        ),
+      );
+      actionsEl.appendChild(uploadDiv);
+    }
   }
 
   async loadTrainedModel() {
