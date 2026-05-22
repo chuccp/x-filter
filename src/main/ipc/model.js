@@ -47,7 +47,8 @@ function register() {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const py = getPythonCommand();
-      if (!py) return { success: false, error: t('train.python_not_found_error') };
+      if (!py)
+        return { success: false, error: t('train.python_not_found_error') };
 
       const projectRoot = path.join(__dirname, '..', '..', '..');
       const script = path.join(projectRoot, 'download_finetuned.py');
@@ -55,14 +56,18 @@ function register() {
         return { success: false, error: 'download_finetuned.py not found' };
       }
 
-      const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
+      const modelDir = path.join(
+        app.getPath('userData'),
+        'models',
+        'x-spam-classifier',
+      );
       const repoId = repo || 'chuccp/x-spam-classifier';
 
-      downloadProcess = spawn(py.cmd, [
-        script,
-        '--repo', repoId,
-        '--output', modelDir,
-      ], { cwd: path.dirname(script) });
+      downloadProcess = spawn(
+        py.cmd,
+        [script, '--repo', repoId, '--output', modelDir],
+        { cwd: path.dirname(script) },
+      );
 
       downloadProcess.stdout.on('data', (data) => {
         const lines = data.toString().trim().split('\n');
@@ -70,14 +75,25 @@ function register() {
           if (!line.trim()) continue;
           if (win) {
             if (line.startsWith('[STATUS]')) {
-              win.webContents.send('model:download-finetuned-progress', { type: 'status', text: line.slice(9) });
+              win.webContents.send('model:download-finetuned-progress', {
+                type: 'status',
+                text: line.slice(9),
+              });
             } else if (line.startsWith('[PROGRESS]')) {
               try {
                 const info = JSON.parse(line.slice(11));
-                win.webContents.send('model:download-finetuned-progress', { type: 'progress', ...info });
-              } catch (e) { /* ignore */ }
+                win.webContents.send('model:download-finetuned-progress', {
+                  type: 'progress',
+                  ...info,
+                });
+              } catch (e) {
+                /* ignore */
+              }
             } else {
-              win.webContents.send('model:download-finetuned-progress', { type: 'log', text: line });
+              win.webContents.send('model:download-finetuned-progress', {
+                type: 'log',
+                text: line,
+              });
             }
           }
         }
@@ -86,7 +102,10 @@ function register() {
       downloadProcess.stderr.on('data', (data) => {
         const text = data.toString().trim();
         if (text && win) {
-          win.webContents.send('model:download-finetuned-progress', { type: 'log', text: '[stderr] ' + text });
+          win.webContents.send('model:download-finetuned-progress', {
+            type: 'log',
+            text: '[stderr] ' + text,
+          });
         }
       });
 
@@ -96,10 +115,17 @@ function register() {
       downloadProcess = null;
 
       if (exitCode === 0) {
-        if (win) win.webContents.send('model:download-finetuned-progress', { type: 'status', text: t('train.download_done') });
+        if (win)
+          win.webContents.send('model:download-finetuned-progress', {
+            type: 'status',
+            text: t('train.download_done'),
+          });
         return { success: true, path: modelDir };
       } else {
-        return { success: false, error: `Download exited with code ${exitCode}` };
+        return {
+          success: false,
+          error: `Download exited with code ${exitCode}`,
+        };
       }
     } catch (e) {
       downloadProcess = null;
@@ -117,10 +143,19 @@ function register() {
 
   ipcMain.handle('model:download-finetuned-status', async () => {
     try {
-      const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
-      const hasModel = fs.existsSync(path.join(modelDir, 'onnx', 'model.onnx'))
-        || fs.existsSync(path.join(modelDir, 'model.onnx'));
-      return { downloaded: hasModel && fs.existsSync(path.join(modelDir, 'config.json')), path: modelDir };
+      const modelDir = path.join(
+        app.getPath('userData'),
+        'models',
+        'x-spam-classifier',
+      );
+      const hasModel =
+        fs.existsSync(path.join(modelDir, 'onnx', 'model.onnx')) ||
+        fs.existsSync(path.join(modelDir, 'model.onnx'));
+      return {
+        downloaded:
+          hasModel && fs.existsSync(path.join(modelDir, 'config.json')),
+        path: modelDir,
+      };
     } catch (e) {
       return { downloaded: false, error: e.message };
     }
@@ -132,7 +167,8 @@ function register() {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const py = getPythonCommand();
-      if (!py) return { success: false, error: t('train.python_not_found_error') };
+      if (!py)
+        return { success: false, error: t('train.python_not_found_error') };
 
       const projectRoot = path.join(__dirname, '..', '..', '..');
       const script = path.join(projectRoot, 'upload_to_hf.py');
@@ -141,16 +177,20 @@ function register() {
       }
 
       const repoId = repo || 'chuccp/x-spam-classifier';
-      const modelDir = path.join(app.getPath('userData'), 'models', 'x-spam-classifier');
+      const modelDir = path.join(
+        app.getPath('userData'),
+        'models',
+        'x-spam-classifier',
+      );
 
       const env = { ...process.env };
       if (token) env.HF_TOKEN = token;
 
-      downloadProcess = spawn(py.cmd, [
-        script,
-        '--repo', repoId,
-        '--input', modelDir,
-      ], { cwd: path.dirname(script), env });
+      downloadProcess = spawn(
+        py.cmd,
+        [script, '--repo', repoId, '--input', modelDir],
+        { cwd: path.dirname(script), env },
+      );
 
       downloadProcess.stdout.on('data', (data) => {
         const lines = data.toString().trim().split('\n');
@@ -158,9 +198,15 @@ function register() {
           if (!line.trim()) continue;
           if (win) {
             if (line.startsWith('[STATUS]')) {
-              win.webContents.send('model:upload-finetuned-progress', { type: 'status', text: line.slice(9) });
+              win.webContents.send('model:upload-finetuned-progress', {
+                type: 'status',
+                text: line.slice(9),
+              });
             } else {
-              win.webContents.send('model:upload-finetuned-progress', { type: 'log', text: line });
+              win.webContents.send('model:upload-finetuned-progress', {
+                type: 'log',
+                text: line,
+              });
             }
           }
         }
@@ -169,7 +215,10 @@ function register() {
       downloadProcess.stderr.on('data', (data) => {
         const text = data.toString().trim();
         if (text && win) {
-          win.webContents.send('model:upload-finetuned-progress', { type: 'log', text: '[stderr] ' + text });
+          win.webContents.send('model:upload-finetuned-progress', {
+            type: 'log',
+            text: '[stderr] ' + text,
+          });
         }
       });
 
@@ -179,7 +228,11 @@ function register() {
       downloadProcess = null;
 
       if (exitCode === 0) {
-        if (win) win.webContents.send('model:upload-finetuned-progress', { type: 'status', text: t('train.upload_done') });
+        if (win)
+          win.webContents.send('model:upload-finetuned-progress', {
+            type: 'status',
+            text: t('train.upload_done'),
+          });
         return { success: true, repo: repoId };
       } else {
         return { success: false, error: `Upload exited with code ${exitCode}` };
@@ -194,23 +247,25 @@ function register() {
 
   ipcMain.handle('model:download-status', async () => {
     const projectRoot = path.join(__dirname, '..', '..', '..');
-    const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
+    const modelDir = path.join(
+      projectRoot,
+      'model',
+      'bert-base-multilingual-cased',
+    );
     const dirExists = fs.existsSync(modelDir);
     const hasFiles = dirExists && fs.readdirSync(modelDir).length > 0;
 
-    const requiredFiles = [
-      'config.json',
-      'tokenizer_config.json',
-      'vocab.txt',
-    ];
-    const hasWeights = fs.existsSync(path.join(modelDir, 'model.safetensors'))
-      || fs.existsSync(path.join(modelDir, 'pytorch_model.bin'));
+    const requiredFiles = ['config.json', 'tokenizer_config.json', 'vocab.txt'];
+    const hasWeights =
+      fs.existsSync(path.join(modelDir, 'model.safetensors')) ||
+      fs.existsSync(path.join(modelDir, 'pytorch_model.bin'));
 
     const missing = [];
     for (const f of requiredFiles) {
       if (!fs.existsSync(path.join(modelDir, f))) missing.push(f);
     }
-    if (!hasWeights) missing.push('model weights (model.safetensors or pytorch_model.bin)');
+    if (!hasWeights)
+      missing.push('model weights (model.safetensors or pytorch_model.bin)');
 
     const complete = missing.length === 0;
     return {
@@ -225,22 +280,35 @@ function register() {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
       const py = getPythonCommand();
-      if (!py) return { success: false, error: t('train.python_not_found_error') };
+      if (!py)
+        return { success: false, error: t('train.python_not_found_error') };
 
       const projectRoot = path.join(__dirname, '..', '..', '..');
-      const modelDir = path.join(projectRoot, 'model', 'bert-base-multilingual-cased');
+      const modelDir = path.join(
+        projectRoot,
+        'model',
+        'bert-base-multilingual-cased',
+      );
 
       const script = path.join(projectRoot, 'download_model.py');
       if (!fs.existsSync(script)) {
         return { success: false, error: t('train.download_script_not_found') };
       }
 
-      if (win) win.webContents.send('model-download:progress', { type: 'status', text: force ? t('train.download_status_force') : t('train.download_status') });
+      if (win)
+        win.webContents.send('model-download:progress', {
+          type: 'status',
+          text: force
+            ? t('train.download_status_force')
+            : t('train.download_status'),
+        });
 
       const spawnArgs = [
         script,
-        '--output', modelDir,
-        '--model', 'bert-base-multilingual-cased',
+        '--output',
+        modelDir,
+        '--model',
+        'bert-base-multilingual-cased',
       ];
       if (force) spawnArgs.push('--force');
 
@@ -254,14 +322,25 @@ function register() {
           if (!line.trim()) continue;
           if (win) {
             if (line.startsWith('[STATUS]')) {
-              win.webContents.send('model-download:progress', { type: 'status', text: line.slice(9) });
+              win.webContents.send('model-download:progress', {
+                type: 'status',
+                text: line.slice(9),
+              });
             } else if (line.startsWith('[PROGRESS]')) {
               try {
                 const info = JSON.parse(line.slice(11));
-                win.webContents.send('model-download:progress', { type: 'progress', ...info });
-              } catch (e) { /* ignore */ }
+                win.webContents.send('model-download:progress', {
+                  type: 'progress',
+                  ...info,
+                });
+              } catch (e) {
+                /* ignore */
+              }
             } else {
-              win.webContents.send('model-download:progress', { type: 'log', text: line });
+              win.webContents.send('model-download:progress', {
+                type: 'log',
+                text: line,
+              });
             }
           }
         }
@@ -271,9 +350,15 @@ function register() {
         const text = data.toString().trim();
         if (text && win) {
           if (text.includes('UserWarning') || text.includes('warnings.warn')) {
-            win.webContents.send('model-download:progress', { type: 'log', text: '[warn] ' + text });
+            win.webContents.send('model-download:progress', {
+              type: 'log',
+              text: '[warn] ' + text,
+            });
           } else {
-            win.webContents.send('model-download:progress', { type: 'log', text: '[stderr] ' + text });
+            win.webContents.send('model-download:progress', {
+              type: 'log',
+              text: '[stderr] ' + text,
+            });
           }
         }
       });
@@ -284,13 +369,98 @@ function register() {
       pretrainedDownloadProcess = null;
 
       if (exitCode === 0) {
-        if (win) win.webContents.send('model-download:progress', { type: 'status', text: t('train.download_done') });
+        if (win)
+          win.webContents.send('model-download:progress', {
+            type: 'status',
+            text: t('train.download_done'),
+          });
         return { success: true, path: modelDir };
       } else {
-        return { success: false, error: t('train.download_exit', { code: exitCode }) };
+        return {
+          success: false,
+          error: t('train.download_exit', { code: exitCode }),
+        };
       }
     } catch (e) {
       pretrainedDownloadProcess = null;
+      return { success: false, error: e.message };
+    }
+  });
+
+  // ── Check trained model on disk ────────────────────────────
+
+  ipcMain.handle('model:check-trained', async () => {
+    try {
+      const modelDir = path.join(
+        app.getPath('userData'),
+        'models',
+        'x-spam-classifier',
+      );
+      const exists = fs.existsSync(modelDir);
+      if (!exists) {
+        return { success: true, exists: false, path: modelDir };
+      }
+
+      const hasOnnx = fs.existsSync(path.join(modelDir, 'onnx', 'model.onnx'));
+      const hasConfig = fs.existsSync(path.join(modelDir, 'config.json'));
+      let metrics = null;
+      let trainedAt = null;
+
+      const metricsPath = path.join(modelDir, 'metrics.json');
+      if (fs.existsSync(metricsPath)) {
+        try {
+          metrics = JSON.parse(fs.readFileSync(metricsPath, 'utf-8'));
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      // Get last modified time as training date
+      const filesToCheck = [
+        path.join(modelDir, 'onnx', 'model.onnx'),
+        path.join(modelDir, 'metrics.json'),
+      ];
+      for (const f of filesToCheck) {
+        if (fs.existsSync(f)) {
+          const stat = fs.statSync(f);
+          trainedAt = stat.mtime.toISOString();
+          break;
+        }
+      }
+
+      // Try to read model type from config
+      let modelType = null;
+      if (hasConfig) {
+        try {
+          const config = JSON.parse(
+            fs.readFileSync(path.join(modelDir, 'config.json'), 'utf-8'),
+          );
+          modelType = config.model_type || config.architectures?.[0] || null;
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      // List ONNX files
+      const onnxFiles = [];
+      const onnxDir = path.join(modelDir, 'onnx');
+      if (fs.existsSync(onnxDir)) {
+        const files = fs.readdirSync(onnxDir);
+        onnxFiles.push(...files);
+      }
+
+      return {
+        success: true,
+        exists: true,
+        path: modelDir,
+        hasOnnx,
+        hasConfig,
+        modelType,
+        metrics,
+        trainedAt,
+        onnxFiles,
+      };
+    } catch (e) {
       return { success: false, error: e.message };
     }
   });
