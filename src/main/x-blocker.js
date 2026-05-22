@@ -55,63 +55,103 @@ async function blockUsers(sourceUrl, comments, onProgress) {
   return { scanned, blocked, errors };
 }
 
+/**
+ * Block a user by performing DOM clicks step-by-step.
+ * Each step is a separate synchronous CDP call — no async IIFE,
+ * which is more reliable than one big awaited script.
+ *
+ * Flow: find article → click caret → click "屏蔽/Block" → wait for user confirm
+ */
 async function blockUserOnPage(sessionId, username, reason) {
-  // Escape username for safe injection into the evaluated script
   const safeUsername = username.replace(/[\\"']/g, '\\$&');
 
-  // Strategy: find the comment article for this user, open "...", click "Block"
-  const script = `
-    (async function() {
-      // Find article containing this user's comment
-      const articles = document.querySelectorAll('article[data-testid="tweet"]');
-      for (const article of articles) {
-        const spans = article.querySelectorAll('span');
-        let found = false;
-        for (const span of spans) {
-          if (span.textContent === '@${safeUsername}') {
-            found = true;
-            break;
+  // Save scroll position
+  const savedScrollY = await cdp.evaluate(sessionId, 'window.scrollY');
+
+  try {
+    // Step 1: Find the article and click its caret "..." button
+    const caretResult = await cdp.evaluate(sessionId, `
+      (function() {
+        var articles = document.querySelectorAll('article[data-testid="tweet"]');
+        for (var i = 0; i < articles.length; i++) {
+          var article = articles[i];
+          var spans = article.querySelectorAll('span');
+          for (var j = 0; j < spans.length; j++) {
+            if (spans[j].textContent === '@${safeUsername}') {
+              var caret = article.querySelector('button[data-testid="caret"]');
+              if (!caret) return { error: 'caret not found' };
+              caret.click();
+              return { clicked: true };
+            }
           }
         }
-        if (!found) continue;
+        return { error: 'user article not found' };
+      })()
+    `);
 
-        // Found the article. Click the caret "..." button
-        const caret = article.querySelector('button[data-testid="caret"]');
-        if (!caret) return { error: 'caret not found' };
-        caret.click();
-        await new Promise(r => setTimeout(r, 500));
+    if (!caretResult || !caretResult.clicked) {
+      return false;
+    }
 
-        // Find "Block" menu item
-        const menuItems = document.querySelectorAll('[role="menu"] [role="menuitem"]');
-        for (const item of menuItems) {
-          if (item.textContent.includes('Block') || item.textContent.includes('屏蔽')) {
-            item.click();
-            await new Promise(r => setTimeout(r, 500));
+    // Wait for menu to appear
+    await sleep(800);
 
-            // Confirm block dialog
-            const confirmBtn = document.querySelector('[data-testid="confirmationSheetConfirm"]');
-            if (confirmBtn) {
-              confirmBtn.click();
-              await new Promise(r => setTimeout(r, 500));
-              return { blocked: true, username: '${safeUsername}' };
-            }
-            return { blocked: true, username: '${safeUsername}' };
+    // Step 2: Find and click the "Block/屏蔽" menu item
+    const blockResult = await cdp.evaluate(sessionId, `
+      (function() {
+        var items = document.querySelectorAll('[role="menu"] [role="menuitem"]');
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].textContent.includes('Block') || items[i].textContent.includes('屏蔽')) {
+            items[i].click();
+            return { clicked: true };
           }
         }
         return { error: 'block menu item not found' };
-      }
-      return { error: 'user article not found' };
-    })()
-  `;
+      })()
+    `);
 
-  const result = await cdp.evaluate(sessionId, script);
+    if (!blockResult || !blockResult.clicked) {
+      // Dismiss menu
+      await cdp.evaluate(sessionId, `document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',keyCode:27,bubbles:true}))`);
+      return false;
+    }
 
-  if (result && result.blocked) {
-    addBlockedUser(username, null, reason || null);
-    return true;
+    // Wait for confirm dialog to appear
+    await sleep(800);
+
+    // Step 3: Click the confirm button
+    const confirmResult = await cdp.evaluate(sessionId, `
+      (function() {
+        var btn = document.querySelector('[data-testid="confirmationSheetConfirm"]');
+        if (btn) {
+          btn.click();
+          return { clicked: true };
+        }
+        return { error: 'confirm button not found' };
+      })()
+    `);
+
+    if (confirmResult && confirmResult.clicked) {
+      // Wait for dialog to close and block to take effect
+      await sleep(1000);
+      addBlockedUser(username, null, reason || null);
+      return true;
+    }
+
+    // Confirm button not found — dismiss any open UI
+    await cdp.evaluate(sessionId, `document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',keyCode:27,bubbles:true}))`);
+    return false;
+
+  } finally {
+    // Dismiss any leftover UI
+    await cdp.evaluate(sessionId, `document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',keyCode:27,bubbles:true}))`);
+
+    // Restore scroll position
+    const currentScrollY = await cdp.evaluate(sessionId, 'window.scrollY');
+    if (savedScrollY !== currentScrollY) {
+      await cdp.evaluate(sessionId, `window.scrollTo(0, ${savedScrollY})`);
+    }
   }
-
-  return false;
 }
 
-module.exports = { blockUsers, cancel };
+module.exports = { blockUsers, blockSingleUser: blockUserOnPage, cancel };

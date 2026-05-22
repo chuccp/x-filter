@@ -219,6 +219,7 @@
   "block.blocking_log": "⏳ Processing @{{username}}...",
   "block.blocked_log": "🚫 Blocked @{{username}}",
   "block.error_log": "❌ Error: {{error}}",
+  "block.scanning_log": "🔍 Scanning @{{username}} (scanned {{scanned}}, spam {{spam}})",
 
   "blocklist.title": "Blocklist",
   "blocklist.count": "{{total}} users ({{blocked}} blocked)",

@@ -219,6 +219,7 @@
   "block.blocking_log": "⏳ @{{username}} を処理中...",
   "block.blocked_log": "🚫 @{{username}} をブロックしました",
   "block.error_log": "❌ エラー：{{error}}",
+  "block.scanning_log": "🔍 スキャン @{{username}}（スキャン {{scanned}}、スパム {{spam}}）",
 
   "blocklist.title": "ブロックリスト",
   "blocklist.count": "{{total}} 人（{{blocked}} ブロック済み）",

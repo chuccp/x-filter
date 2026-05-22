@@ -235,6 +235,8 @@ export default class UserBlockView {
       }
       log.scrollTop = log.scrollHeight;
       return;
+    } else if (p.phase === 'scanning') {
+      logLine.textContent = t('block.scanning_log', { username: p.username, scanned: p.scanned, spam: p.matched });
     } else if (p.phase === 'predicting') {
       document.getElementById('block-bar').style.background = 'var(--accent)';
       document.getElementById('block-bar').style.width = '100%';

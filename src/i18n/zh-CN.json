@@ -219,6 +219,7 @@
   "block.blocking_log": "⏳ 正在处理 @{{username}}...",
   "block.blocked_log": "🚫 已拉黑 @{{username}}",
   "block.error_log": "❌ 错误：{{error}}",
+  "block.scanning_log": "🔍 扫描 @{{username}}（已扫 {{scanned}}，垃圾 {{spam}}）",
 
   "blocklist.title": "拉黑名单",
   "blocklist.count": "{{total}} 人（已拉黑 {{blocked}}）",

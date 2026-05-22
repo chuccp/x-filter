@@ -130,6 +130,25 @@ async function getPageTargets() {
   return (result.targetInfos || []).filter(t => t.type === 'page');
 }
 
+// Find the currently active/focused tab (the one the user is looking at)
+async function getActiveTab() {
+  const targets = await getPageTargets();
+  if (targets.length === 0) return null;
+
+  // Prefer tab already on x.com
+  const xTab = targets.find(t => t.url && t.url.includes('x.com'));
+  if (xTab) return xTab;
+
+  // Fallback: try to find the active tab via last focused
+  // CDP doesn't directly expose "active", so pick the first non-attached one
+  return targets[0];
+}
+
+// Activate (bring to foreground) a target tab
+async function activateTarget(targetId) {
+  await sendCommand('Target.activateTarget', { targetId });
+}
+
 // Attach to a target and get sessionId
 async function attachToTarget(targetId) {
   const result = await sendCommand('Target.attachToTarget', {
@@ -244,6 +263,8 @@ module.exports = {
   isConnected,
   setOnDisconnect,
   getPageTargets,
+  getActiveTab,
+  activateTarget,
   attachToTarget,
   detachFromTarget,
   navigatePage,

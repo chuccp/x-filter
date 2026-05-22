@@ -1,10 +1,15 @@
 const { ipcMain, BrowserWindow } = require('electron');
 const fs = require('fs');
 const db = require('../database');
+const cdp = require('../cdp-manager');
 const scraper = require('../x-scraper');
 const modelManager = require('../model-manager');
 const blocker = require('../x-blocker');
 const { t } = require('../i18n');
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+let sessionCancelFlag = false;
 
 function register() {
   async function resolveTargets(url, win) {
@@ -16,9 +21,15 @@ function register() {
     return targets;
   }
 
+  /**
+   * Streaming block session: scrape one comment → predict → block if spam.
+   * This replaces the old batch flow (scrape all → predict all → block all)
+   * to produce more natural timing between blocks.
+   */
   async function runBlockSession(win, postUrl, index, total, options) {
-    const { filterFn, afterFilter, afterBlock } = options;
-    const sessionId = db.createBlockSession(postUrl);
+    const { shouldBlockFn, afterBlock, blockDelay } = options;
+    const blockSessionId = db.createBlockSession(postUrl);
+
     if (win) {
       win.webContents.send('block:progress', {
         phase: 'status',
@@ -26,40 +37,102 @@ function register() {
       });
     }
 
-    const { comments } = await scraper.scrapeComments(postUrl, (progress) => {
-      if (win) win.webContents.send('block:progress', { phase: 'scraping', ...progress, postIndex: index + 1, postTotal: total });
-    });
-
-    if (comments.length === 0) {
-      db.completeBlockSession(sessionId, { comments_scanned: 0, spam_detected: 0, users_blocked: 0, errors: 0 });
-      return { scanned: 0, matched: 0, blocked: 0, errors: 0 };
+    // Set up CDP session — use the active/x.com tab
+    const activeTab = await cdp.getActiveTab();
+    if (!activeTab) {
+      throw new Error(t('block.no_tabs'));
     }
+    await cdp.activateTarget(activeTab.targetId);
+    const cdpSessionId = await cdp.attachToTarget(activeTab.targetId);
 
-    let matched = comments;
-    if (filterFn) {
-      matched = await filterFn(comments);
+    let scanned = 0;
+    let matched = 0;
+    let blocked = 0;
+    let errors = 0;
+    const matchedComments = [];
+
+    try {
+      await scraper.scrapeInSession(cdpSessionId, postUrl,
+        async (comment) => {
+          if (sessionCancelFlag) return;
+
+          scanned++;
+
+          // Determine if this comment should be blocked
+          let shouldBlock = !shouldBlockFn; // Block all if no filter
+          if (shouldBlockFn) {
+            try {
+              shouldBlock = await shouldBlockFn(comment);
+            } catch (e) {
+              shouldBlock = false;
+            }
+          }
+
+          if (shouldBlock) {
+            matched++;
+            matchedComments.push(comment);
+
+            if (win) {
+              win.webContents.send('block:progress', {
+                phase: 'blocking', scanned, matched, blocked, errors, username: comment.username,
+              });
+            }
+
+            if (!db.isUserBlocked(comment.username)) {
+              try {
+                const result = await blocker.blockSingleUser(cdpSessionId, comment.username, comment.text);
+                if (result) {
+                  blocked++;
+                  if (win) {
+                    win.webContents.send('block:progress', {
+                      phase: 'blocked', scanned, matched, blocked, errors, username: comment.username,
+                    });
+                  }
+                }
+              } catch (e) {
+                errors++;
+                if (win) {
+                  win.webContents.send('block:progress', {
+                    phase: 'error', scanned, matched, blocked, errors, error: e.message,
+                  });
+                }
+              }
+
+              // Delay after block attempt to avoid rapid-fire blocking
+              await sleep(blockDelay || 3000);
+            }
+          } else {
+            if (win) {
+              win.webContents.send('block:progress', {
+                phase: 'scanning', scanned, matched, blocked, errors, username: comment.username,
+              });
+            }
+          }
+        },
+        (progress) => {
+          if (win) {
+            win.webContents.send('block:progress', {
+              phase: 'scraping', ...progress, postIndex: index + 1, postTotal: total,
+            });
+          }
+        }
+      );
+    } finally {
+      try { await cdp.detachFromTarget(cdpSessionId); } catch (e) { /* ignore */ }
     }
-
-    if (afterFilter) {
-      await afterFilter(comments, matched);
-    }
-
-    const result = await blocker.blockUsers(postUrl, matched, (progress) => {
-      if (win) win.webContents.send('block:progress', progress);
-    });
 
     if (afterBlock) {
-      await afterBlock(matched, result);
+      await afterBlock(matchedComments, { blocked, errors });
     }
 
-    db.completeBlockSession(sessionId, {
-      comments_scanned: comments.length,
-      spam_detected: matched.length,
-      users_blocked: result.blocked,
-      errors: result.errors,
+    db.completeBlockSession(blockSessionId, {
+      comments_scanned: scanned,
+      spam_detected: matched,
+      users_blocked: blocked,
+      errors,
     });
 
-    return { scanned: comments.length, matched: matched.length, blocked: result.blocked, errors: result.errors };
+    return { scanned, matched, blocked, errors };
   }
 
   ipcMain.handle('block:start', async (event, url, options) => {
@@ -71,6 +144,7 @@ function register() {
         return { success: false, error: t('block.model_not_loaded') };
       }
 
+      sessionCancelFlag = false;
       const targets = await resolveTargets(url, win);
       if (targets.length === 0) {
         return { success: true, scanned: 0, spam: 0, blocked: 0 };
@@ -79,26 +153,16 @@ function register() {
       let totalScanned = 0, totalSpam = 0, totalBlocked = 0, totalErrors = 0;
 
       for (let i = 0; i < targets.length; i++) {
-        const filterFn = async (comments) => {
-          const predictions = await modelManager.predictBatch(
-            comments.map(c => ({ text: c.text, post_text: c.post_text }))
-          );
-          return comments.filter((c, j) => predictions[j] && predictions[j].spam && predictions[j].confidence >= threshold);
+        if (sessionCancelFlag) break;
+
+        // Per-comment prediction using single predict() instead of predictBatch
+        const shouldBlockFn = async (comment) => {
+          const prediction = await modelManager.predict(comment.text, comment.post_text);
+          return prediction.spam && prediction.confidence >= threshold;
         };
 
         const result = await runBlockSession(win, targets[i], i, targets.length, {
-          filterFn,
-          afterFilter: (comments, matched) => {
-            if (win) {
-              win.webContents.send('block:progress', {
-                phase: 'predicting',
-                total: comments.length,
-                spam: matched.length,
-                postIndex: i + 1,
-                postTotal: targets.length,
-              });
-            }
-          },
+          shouldBlockFn,
           afterBlock: (matched) => {
             db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
           },
@@ -126,11 +190,16 @@ function register() {
   ipcMain.handle('block:all', async (event, url) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
+      sessionCancelFlag = false;
+
       const targets = await resolveTargets(url, win);
 
       let totalScanned = 0, totalBlocked = 0, totalErrors = 0;
 
       for (let i = 0; i < targets.length; i++) {
+        if (sessionCancelFlag) break;
+
+        // No shouldBlockFn = block all commenters
         const result = await runBlockSession(win, targets[i], i, targets.length, {
           afterBlock: (matched) => {
             db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
@@ -149,6 +218,7 @@ function register() {
   });
 
   ipcMain.handle('block:cancel', async () => {
+    sessionCancelFlag = true;
     blocker.cancel();
     scraper.cancel();
     return { success: true };
@@ -267,17 +337,22 @@ function register() {
       }
       const blocklist = entries.map(e => e.username.toLowerCase());
       const win = BrowserWindow.fromWebContents(event.sender);
+      sessionCancelFlag = false;
 
       const targets = await resolveTargets(url, win);
 
       let totalScanned = 0, totalMatched = 0, totalBlocked = 0, totalErrors = 0;
 
       for (let i = 0; i < targets.length; i++) {
+        if (sessionCancelFlag) break;
+
+        const shouldBlockFn = (comment) => {
+          const u = (comment.username || '').toLowerCase();
+          return blocklist.some(b => b === u);
+        };
+
         const result = await runBlockSession(win, targets[i], i, targets.length, {
-          filterFn: (comments) => comments.filter(c => {
-            const u = (c.username || '').toLowerCase();
-            return blocklist.some(b => b === u);
-          }),
+          shouldBlockFn,
           afterBlock: (matched) => {
             db.markMultipleBlockedInBlocklist(matched.map(c => c.username));
           },
