@@ -16,15 +16,17 @@
 
 核心检测信号是 **评论与帖子的相关性**：与原文无关的评论很可能是垃圾内容。训练和推理时会将帖子原文和评论文本拼接为 `[POST] <帖子> [COMMENT] <评论>` 格式输入 BERT 模型，让模型学习帖子-评论之间的关系。
 
+ONNX 模型推理完全在 Node.js 中运行（通过 `@xenova/transformers`），拉黑操作无需 Python。Python 仅用于训练模型和从 Hugging Face 下载模型。
+
 ```
-采集评论 → 标注数据 → 导出 CSV → 训练 BERT → ONNX 模型 → 推理拉黑
+采集评论 → 标注数据 → 导出 CSV → 训练 BERT（需 Python） → ONNX 模型 → 推理拉黑（纯 Node.js）
 ```
 
 ## 环境要求
 
 - **Node.js** >= 18
 - **Chrome 浏览器**（需开启远程调试，见下文）
-- **Python** >= 3.9（仅训练/下载模型时需要，应用内置便携 Python 下载功能）
+- **Python** >= 3.9（仅训练和下载模型时需要，纯拉黑操作不需要 Python）
 - **Windows** / macOS / Linux
 
 ## 快速开始
