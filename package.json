@@ -15,6 +15,37 @@
     "sql.js": "^1.11.0",
     "ws": "^8.18.2"
   },
+  "build": {
+    "appId": "com.xfilter.app",
+    "productName": "x-filter",
+    "files": [
+      "main.js",
+      "preload.js",
+      "dist/**/*",
+      "src/**/*",
+      "scripts/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      { "from": "train.py", "to": "train.py" }
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": null
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
   "devDependencies": {
     "concurrently": "^8.2.0",
     "electron": "^42.0.1",
