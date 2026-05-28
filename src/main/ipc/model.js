@@ -4,6 +4,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const modelManager = require('../model-manager');
 const { getPythonCommand } = require('../python-utils');
+const { downloadRepo, cancel: cancelDownload } = require('../hf-downloader');
 const { t } = require('../i18n');
 
 let downloadProcess = null;
@@ -41,103 +42,38 @@ function register() {
     }
   });
 
-  // ── Download fine-tuned model from Hugging Face Hub ────────
+  // ── Download fine-tuned model from Hugging Face Hub (pure JS) ──
 
   ipcMain.handle('model:download-finetuned', async (event, repo) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
-      const py = await getPythonCommand();
-      if (!py)
-        return { success: false, error: t('train.python_not_found_error') };
-
-      const projectRoot = path.join(__dirname, '..', '..', '..');
-      const script = path.join(projectRoot, 'download_finetuned.py');
-      if (!fs.existsSync(script)) {
-        return { success: false, error: 'download_finetuned.py not found' };
-      }
 
       const modelDir = path.join(
         app.getPath('userData'),
         'models',
         'x-spam-classifier',
       );
-      const repoId = repo || 'chuccp/x-spam-classifier';
 
-      downloadProcess = spawn(
-        py.cmd,
-        [script, '--repo', repoId, '--output', modelDir],
-        { cwd: path.dirname(script) },
+      const send = (data) => {
+        if (win) win.webContents.send('model:download-finetuned-progress', data);
+      };
+
+      await downloadRepo(
+        repo || 'chuccp/x-spam-classifier',
+        modelDir,
+        (text) => send({ type: 'status', text }),
+        (p) => send({ type: 'progress', ...p }),
       );
 
-      downloadProcess.stdout.on('data', (data) => {
-        const lines = data.toString().trim().split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          if (win) {
-            if (line.startsWith('[STATUS]')) {
-              win.webContents.send('model:download-finetuned-progress', {
-                type: 'status',
-                text: line.slice(9),
-              });
-            } else if (line.startsWith('[PROGRESS]')) {
-              try {
-                const info = JSON.parse(line.slice(11));
-                win.webContents.send('model:download-finetuned-progress', {
-                  type: 'progress',
-                  ...info,
-                });
-              } catch (e) {
-                /* ignore */
-              }
-            } else {
-              win.webContents.send('model:download-finetuned-progress', {
-                type: 'log',
-                text: line,
-              });
-            }
-          }
-        }
-      });
-
-      downloadProcess.stderr.on('data', (data) => {
-        const text = data.toString().trim();
-        if (text && win) {
-          win.webContents.send('model:download-finetuned-progress', {
-            type: 'log',
-            text: '[stderr] ' + text,
-          });
-        }
-      });
-
-      const exitCode = await new Promise((resolve) => {
-        downloadProcess.on('close', resolve);
-      });
-      downloadProcess = null;
-
-      if (exitCode === 0) {
-        if (win)
-          win.webContents.send('model:download-finetuned-progress', {
-            type: 'status',
-            text: t('train.download_done'),
-          });
-        return { success: true, path: modelDir };
-      } else {
-        return {
-          success: false,
-          error: `Download exited with code ${exitCode}`,
-        };
-      }
+      send({ type: 'status', text: t('train.download_done') });
+      return { success: true, path: modelDir };
     } catch (e) {
-      downloadProcess = null;
       return { success: false, error: e.message };
     }
   });
 
   ipcMain.handle('model:download-finetuned-cancel', async () => {
-    if (downloadProcess) {
-      downloadProcess.kill();
-      downloadProcess = null;
-    }
+    cancelDownload();
     return { success: true };
   });
 
