@@ -14,8 +14,8 @@
 
 ## 拉黑操作流程（普通用户只需要看这里）
 
-1. **安装应用** — `npm install && npm run dev`
-2. **下载模型** — 点击侧边栏"拉黑操作" → "下载模型"，输入 `chuccp/x-spam-classifier`
+1. **下载安装包** — 从 [Releases](https://github.com/chuccp/x-filter/releases) 页面下载对应平台安装包（Windows `.exe`、macOS `.dmg`、Linux `.AppImage`）
+2. **下载模型** — 打开应用，侧边栏切到"拉黑操作"，点击"下载模型"，输入 `chuccp/x-spam-classifier`（或从 [Hugging Face](https://huggingface.co/chuccp/x-spam-classifier) 下载后放到模型目录）
 3. **启动 Chrome 调试模式** — 见下方 [开启 Chrome 远程调试](#2-开启-chrome-远程调试)
 4. **连接 Chrome** — 在应用中点击连接
 5. **开始拉黑** — 粘贴推文链接，点击"扫描并拉黑"，应用会自动识别垃圾评论并拉黑发送者
