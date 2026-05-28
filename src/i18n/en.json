@@ -271,6 +271,7 @@
   "blocklist.fail": "Failed: {{error}}",
   "blocklist.cancelled": "Cancelled",
 
+  "common.ok": "OK",
   "common.cancel": "Cancel",
   "common.close": "Close",
   "common.refresh": "🔄 Refresh",
@@ -330,8 +331,13 @@
   "train.uploading": "Uploading model...",
   "train.upload_done": "Upload complete! Model published to Hugging Face Hub",
   "train.upload_fail": "Upload failed: {{error}}",
-  "train.upload_token_required": "HF_TOKEN environment variable required (run in terminal: set HF_TOKEN=hf_xxx)",
+  "train.upload_repo_required": "Please enter a Hugging Face repo name (format: username/repo-name)",
+  "train.upload_token_required": "Please enter your HF Token (format: hf_xxx)",
   "train.download_script_not_found": "download_model.py not found",
+
+  "block.modal_download_title": "Download Model",
+  "block.modal_download_url_label": "Hugging Face Model URL",
+  "block.modal_download_btn": "Download",
 
   "context_menu.cut": "Cut",
   "context_menu.copy": "Copy",

@@ -45,17 +45,28 @@ export default class AdminSettingsView {
         await apiInvoke('model:load');
         this.loadSettings();
       });
-      document.getElementById('btn-settings-download-model').addEventListener('click', async () => {
-        const dlBtn = document.getElementById('btn-settings-download-model');
-        dlBtn.disabled = true;
-        dlBtn.textContent = t('block.downloading_model');
-        const res = await apiInvoke('model:download-finetuned');
-        if (res.success) {
-          modelEl.innerHTML = `<span style="color:var(--success)">${t('block.download_complete')}</span>`;
-        } else {
-          modelEl.innerHTML = `<span style="color:var(--danger)">${t('block.download_failed', { error: res.error })}</span>`;
-        }
-        this.loadSettings();
+      document.getElementById('btn-settings-download-model').addEventListener('click', () => {
+        const overlay = document.getElementById('modal-download-model');
+        if (!overlay) return;
+        overlay.style.display = 'flex';
+        const closeModal = () => { overlay.style.display = 'none'; };
+        overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+        overlay.querySelectorAll('[data-close]').forEach(b => { b.onclick = closeModal; });
+        document.getElementById('modal-download-model-confirm').onclick = async () => {
+          const urlInput = document.getElementById('modal-download-model-url');
+          const raw = (urlInput?.value || '').trim();
+          const repo = raw.replace(/^https?:\/\/huggingface\.co\//, '').replace(/\/$/, '');
+          closeModal();
+          const dlBtn = document.getElementById('btn-settings-download-model');
+          if (dlBtn) { dlBtn.disabled = true; dlBtn.textContent = t('block.downloading_model'); }
+          const res = await apiInvoke('model:download-finetuned', repo);
+          if (res.success) {
+            modelEl.innerHTML = `<span style="color:var(--success)">${t('block.download_complete')}</span>`;
+          } else {
+            modelEl.innerHTML = `<span style="color:var(--danger)">${t('block.download_failed', { error: res.error })}</span>`;
+          }
+          this.loadSettings();
+        };
       });
     }
   }

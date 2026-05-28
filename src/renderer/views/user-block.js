@@ -14,6 +14,7 @@ export default class UserBlockView {
   bindEvents() {
     document.getElementById('btn-block-start').addEventListener('click', () => this.start());
     document.getElementById('btn-block-cancel').addEventListener('click', () => this.cancel());
+    document.getElementById('btn-download-model').addEventListener('click', () => this.openDownloadModal());
     document.getElementById('threshold-slider').addEventListener('input', (e) => {
       document.getElementById('threshold-value').textContent = e.target.value;
     });
@@ -77,52 +78,85 @@ export default class UserBlockView {
       }
     }
 
-    // Check if fine-tuned model is downloadable from HF Hub
-    const dlRes = await apiInvoke('model:download-finetuned-status');
-    const dlBtn = document.getElementById('btn-download-model');
-    if (dlBtn) {
-      if (dlRes.downloaded) {
-        dlBtn.style.display = 'none';
-      } else {
-        dlBtn.style.display = '';
-        dlBtn.textContent = t('block.btn_download_model');
-        dlBtn.onclick = () => this.downloadModel();
-      }
-    }
   }
 
-  async downloadModel() {
+  openDownloadModal() {
+    const overlay = document.getElementById('modal-download-model');
+    if (!overlay) return;
+
+    // Reset to phase 1
+    document.getElementById('modal-dl-phase-input').style.display = '';
+    document.getElementById('modal-dl-phase-progress').style.display = 'none';
+    document.getElementById('modal-dl-phase-done').style.display = 'none';
+    document.getElementById('modal-dl-bar').style.width = '0%';
+    document.getElementById('modal-dl-text').textContent = '准备下载...';
+    const cancelBtn = document.getElementById('modal-download-model-cancel');
+    const confirmBtn = document.getElementById('modal-download-model-confirm');
+    const closeBtn = document.getElementById('modal-download-model-close');
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = t('block.modal_download_btn');
+    confirmBtn.disabled = false;
+
+    overlay.style.display = 'flex';
+
+    const closeModal = () => { overlay.style.display = 'none'; };
+    closeBtn.onclick = () => { if (!this.downloading) closeModal(); };
+    cancelBtn.onclick = () => { if (!this.downloading) closeModal(); };
+    overlay.onclick = (e) => { if (e.target === overlay && !this.downloading) closeModal(); };
+
+    confirmBtn.onclick = () => {
+      const raw = (document.getElementById('modal-download-model-url')?.value || '').trim();
+      const repo = raw.replace(/^https?:\/\/huggingface\.co\//, '').replace(/\/$/, '');
+      if (!repo) return;
+      this._runDownloadInModal(repo, closeModal);
+    };
+  }
+
+  async _runDownloadInModal(repo, closeModal) {
     this.downloading = true;
-    const btn = document.getElementById('btn-download-model');
-    if (btn) { btn.disabled = true; btn.textContent = t('block.downloading_model'); }
 
-    const dlArea = document.getElementById('download-progress-area');
-    const dlBar = document.getElementById('download-bar');
-    const dlText = document.getElementById('download-progress-text');
-    if (dlArea) dlArea.style.display = 'block';
-    if (dlBar) dlBar.style.width = '0%';
-    if (dlText) dlText.textContent = t('block.downloading_model');
+    // Switch to progress phase
+    document.getElementById('modal-dl-phase-input').style.display = 'none';
+    document.getElementById('modal-dl-phase-progress').style.display = '';
+    document.getElementById('modal-dl-phase-done').style.display = 'none';
+    document.getElementById('modal-dl-bar').style.width = '0%';
+    const cancelBtn = document.getElementById('modal-download-model-cancel');
+    const confirmBtn = document.getElementById('modal-download-model-confirm');
+    cancelBtn.style.display = 'none';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = t('block.downloading_model');
 
-    const res = await apiInvoke('model:download-finetuned');
-
+    const res = await apiInvoke('model:download-finetuned', repo);
     this.downloading = false;
-    if (dlArea) dlArea.style.display = 'none';
+
+    // Switch to done phase
+    document.getElementById('modal-dl-phase-progress').style.display = 'none';
+    document.getElementById('modal-dl-phase-done').style.display = '';
+    const resultEl = document.getElementById('modal-dl-result');
 
     if (res.success) {
-      showStatus('block-status', t('block.download_complete'));
-      await this.checkModel();
+      resultEl.className = 'status-line success';
+      resultEl.textContent = t('block.download_complete');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = t('common.ok');
+      confirmBtn.onclick = async () => {
+        closeModal();
+        await this.checkModel();
+      };
     } else {
-      showStatus('block-status', t('block.download_failed', { error: res.error }), false);
+      resultEl.className = 'status-line error';
+      resultEl.textContent = t('block.download_failed', { error: res.error });
+      cancelBtn.style.display = '';
+      cancelBtn.textContent = t('common.close');
+      cancelBtn.onclick = closeModal;
+      confirmBtn.style.display = 'none';
     }
-
-    if (btn) { btn.disabled = false; btn.textContent = t('block.btn_download_model'); }
   }
 
   handleDownloadProgress(data) {
-    const dlBar = document.getElementById('download-bar');
-    const dlText = document.getElementById('download-progress-text');
-    const dlArea = document.getElementById('download-progress-area');
-    if (dlArea && dlArea.style.display === 'none') return;
+    if (!this.downloading) return;
+    const dlBar = document.getElementById('modal-dl-bar');
+    const dlText = document.getElementById('modal-dl-text');
 
     if (data.type === 'status') {
       if (dlText) dlText.textContent = data.text;

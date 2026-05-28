@@ -190,6 +190,7 @@
               <button class="btn btn-danger" id="btn-spam" data-i18n="label.btn_spam">垃圾评论</button>
               <button class="btn btn-success" id="btn-not-spam" data-i18n="label.btn_not_spam">正常评论</button>
               <button class="btn btn-outline" id="btn-skip" data-i18n="label.btn_skip">跳过 →</button>
+              <button class="btn btn-outline" id="btn-delete" style="color:var(--danger)">删除</button>
             </div>
             <div class="shortcut-hint" data-i18n="label.shortcuts">键盘快捷键：S = 垃圾 · N = 正常 · → = 跳过 · ← = 返回</div>
           </div>
@@ -326,25 +327,6 @@
       <div class="modal-overlay" id="modal-add" style="display:none">
         <div class="modal-box">
           <div class="modal-header">
-            <h3 data-i18n="blocklist.modal_add_title">添加用户</h3>
-            <button class="modal-close" data-close="modal-add">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label data-i18n="blocklist.col_username">用户名</label>
-              <input type="text" id="modal-add-input" data-i18n-placeholder="blocklist.modal_add_placeholder" placeholder="输入用户名（如 elonmusk）">
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-outline btn-sm" data-close="modal-add" data-i18n="common.cancel">取消</button>
-            <button class="btn btn-sm" id="modal-add-confirm" data-i18n="blocklist.modal_add_btn">添加</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-overlay" id="modal-import" style="display:none">
-        <div class="modal-box">
-          <div class="modal-header">
             <h3 data-i18n="blocklist.modal_import_title">导入名单</h3>
             <button class="modal-close" data-close="modal-import">&times;</button>
           </div>
@@ -392,6 +374,41 @@
         </div>
       </div>
     </section>
+
+    <!-- Modal: Download fine-tuned model -->
+    <div class="modal-overlay" id="modal-download-model" style="display:none">
+      <div class="modal-box" style="max-width:480px">
+        <div class="modal-header">
+          <h3 data-i18n="block.modal_download_title">下载模型</h3>
+          <button class="modal-close" id="modal-download-model-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <!-- Phase 1: input -->
+          <div id="modal-dl-phase-input">
+            <p class="help-text">输入 Hugging Face 模型路径，例如 <code>username/model-name</code>，或直接粘贴完整链接。</p>
+            <div class="form-group">
+              <label data-i18n="block.modal_download_url_label">Hugging Face 模型地址</label>
+              <input type="text" id="modal-download-model-url" value="https://huggingface.co/coke123/x-spam-classifier" placeholder="username/model-name 或 https://huggingface.co/username/model-name">
+            </div>
+          </div>
+          <!-- Phase 2: downloading -->
+          <div id="modal-dl-phase-progress" style="display:none">
+            <div class="progress-bar" style="margin-bottom:8px">
+              <div class="progress-fill" id="modal-dl-bar"></div>
+              <span class="progress-text" id="modal-dl-text">准备下载...</span>
+            </div>
+          </div>
+          <!-- Phase 3: done -->
+          <div id="modal-dl-phase-done" style="display:none">
+            <div class="status-line" id="modal-dl-result"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline btn-sm" id="modal-download-model-cancel" data-i18n="common.cancel">取消</button>
+          <button class="btn btn-sm" id="modal-download-model-confirm" data-i18n="block.modal_download_btn">下载</button>
+        </div>
+      </div>
+    </div>
 
     <!-- View: Settings -->
     <section id="view-settings" class="view">

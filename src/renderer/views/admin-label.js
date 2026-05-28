@@ -34,6 +34,7 @@ export default class AdminLabelView {
     document.getElementById('btn-spam').addEventListener('click', () => this.labelCurrent(1));
     document.getElementById('btn-not-spam').addEventListener('click', () => this.labelCurrent(0));
     document.getElementById('btn-skip').addEventListener('click', () => this.next());
+    document.getElementById('btn-delete').addEventListener('click', () => this.deleteCurrent());
     document.getElementById('btn-prev').addEventListener('click', () => this.prev());
     document.getElementById('btn-next').addEventListener('click', () => this.next());
     document.getElementById('btn-batch-spam').addEventListener('click', () => this.batchLabel(1));
@@ -53,6 +54,7 @@ export default class AdminLabelView {
       if (e.key === 'n' || e.key === 'N') this.labelCurrent(0);
       if (e.key === 'ArrowRight') this.next();
       if (e.key === 'ArrowLeft') this.prev();
+      if (e.key === 'Delete') this.deleteCurrent();
     });
   }
 
@@ -165,6 +167,16 @@ export default class AdminLabelView {
   }
   prev() {
     if (this.currentIndex > 0) { this.currentIndex--; this.render(); }
+  }
+
+  async deleteCurrent() {
+    if (this.comments.length === 0) return;
+    const c = this.comments[this.currentIndex];
+    await apiInvoke('labels:delete', c.id);
+    this.comments.splice(this.currentIndex, 1);
+    if (this.currentIndex >= this.comments.length) this.currentIndex = Math.max(0, this.comments.length - 1);
+    await this.renderStats();
+    this.render();
   }
 
   async batchLabel(label) {

@@ -22,13 +22,14 @@ function isProfileUrl(url) {
 async function scrapeProfilePosts(profileUrl, onProgress) {
   cancelFlag = false;
 
-  const targets = await cdp.getPageTargets();
-  if (targets.length === 0) {
+  const activeTab = await cdp.getActiveTab();
+  if (!activeTab) {
     const { sessionId } = await cdp.openNewTab('about:blank');
     return scrapeProfileWithSession(sessionId, profileUrl, onProgress);
   }
 
-  const sessionId = await cdp.attachToTarget(targets[0].targetId);
+  await cdp.activateTarget(activeTab.targetId);
+  const sessionId = await cdp.attachToTarget(activeTab.targetId);
   return scrapeProfileWithSession(sessionId, profileUrl, onProgress);
 }
 
@@ -39,6 +40,7 @@ async function scrapeProfileWithSession(sessionId, profileUrl, onProgress) {
 
   try {
     await cdp.navigatePage(sessionId, profileUrl);
+    await cdp.waitForPageLoad(sessionId);
     await cdp.waitForSelector(sessionId, 'article[data-testid="tweet"]', 30000);
 
     if (cancelFlag) return [];
@@ -56,20 +58,36 @@ async function scrapeProfileWithSession(sessionId, profileUrl, onProgress) {
 
     const postUrls = new Set();
     let noNewCount = 0;
-    const maxNoNew = 5;
+    const maxNoNew = 10;
 
     for (let i = 0; i < maxScroll; i++) {
       if (cancelFlag) break;
 
       const links = await cdp.evaluate(sessionId, `
         (function() {
-          const links = document.querySelectorAll('a[href*="/status/"]');
-          return [...new Set([...links].map(a => {
-            const href = a.getAttribute('href');
-            // Extract status ID: /username/status/1234567890
-            const m = href.match(/^\\/(\\w+)\\/status\\/(\\d+)/);
-            return m ? 'https://x.com' + m[0] : null;
-          }).filter(Boolean))];
+          var boundaryEl = null;
+          var allSpans = document.querySelectorAll('span');
+          for (var k = 0; k < allSpans.length; k++) {
+            var t = allSpans[k].textContent.trim();
+            if (t === '发现更多' || t === 'Discover more') {
+              boundaryEl = allSpans[k].closest('[data-testid="cellInnerDiv"]');
+              break;
+            }
+          }
+          var links = document.querySelectorAll('a[href*="/status/"]');
+          var result = [];
+          var seen = new Set();
+          for (var i = 0; i < links.length; i++) {
+            if (boundaryEl && (boundaryEl.compareDocumentPosition(links[i]) & 4)) break;
+            var href = links[i].getAttribute('href');
+            var m = href.match(/^\\/(\\w+)\\/status\\/(\\d+)/);
+            var url = m ? 'https://x.com' + m[0] : null;
+            if (url && !seen.has(url)) {
+              seen.add(url);
+              result.push(url);
+            }
+          }
+          return result;
         })()
       `);
 
@@ -103,15 +121,14 @@ async function scrapeProfileWithSession(sessionId, profileUrl, onProgress) {
 async function scrapeComments(url, onProgress) {
   cancelFlag = false;
 
-  // 1. Find or create a page target
-  const targets = await cdp.getPageTargets();
-  if (targets.length === 0) {
+  const activeTab = await cdp.getActiveTab();
+  if (!activeTab) {
     const { sessionId } = await cdp.openNewTab('about:blank');
     return scrapeWithSession(sessionId, url, onProgress);
   }
 
-  // Use existing page
-  const sessionId = await cdp.attachToTarget(targets[0].targetId);
+  await cdp.activateTarget(activeTab.targetId);
+  const sessionId = await cdp.attachToTarget(activeTab.targetId);
   return scrapeWithSession(sessionId, url, onProgress);
 }
 
@@ -123,6 +140,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
   try {
     // Navigate and wait for React to render tweet articles
     await cdp.navigatePage(sessionId, url);
+    await cdp.waitForPageLoad(sessionId);
     await cdp.waitForSelector(sessionId, 'article[data-testid="tweet"]', 30000);
 
     if (cancelFlag) return { comments: [], url };
@@ -143,7 +161,7 @@ async function scrapeWithSession(sessionId, url, onProgress) {
     const seenTexts = new Set();
     let postText = '';
     let noNewCount = 0;
-    const maxNoNew = 3; // Stop after 3 consecutive scrolls with no new comments
+    const maxNoNew = 8;
 
     for (let i = 0; i < maxScroll; i++) {
       if (cancelFlag) break;
@@ -165,40 +183,48 @@ async function scrapeWithSession(sessionId, url, onProgress) {
             return result.trim();
           }
           const results = [];
-          const articles = document.querySelectorAll('article[data-testid="tweet"]');
-          let isFirst = true;
-          for (const article of articles) {
-            const textEl = article.querySelector('[data-testid="tweetText"]');
+          var articles = document.querySelectorAll('article[data-testid="tweet"]');
+          // Find system recommendation boundary
+          var boundaryEl = null;
+          var allSpans = document.querySelectorAll('span');
+          for (var k = 0; k < allSpans.length; k++) {
+            var t = allSpans[k].textContent.trim();
+            if (t === '发现更多' || t === 'Discover more') {
+              boundaryEl = allSpans[k].closest('[data-testid="cellInnerDiv"]');
+              break;
+            }
+          }
+          var isFirst = true;
+          for (var i = 0; i < articles.length; i++) {
+            var article = articles[i];
+            if (boundaryEl && (boundaryEl.compareDocumentPosition(article) & 4)) { results.push({ _endReached: true }); break; }
+            var textEl = article.querySelector('[data-testid="tweetText"]');
             if (!textEl) continue;
-            const text = getTextWithEmojis(textEl);
+            var text = getTextWithEmojis(textEl);
 
             if (isFirst) {
-              // First article is the original post — capture its text and skip
               results.push({ _isPost: true, text: text, username: '' });
               isFirst = false;
               continue;
             }
 
-            // Skip retweets/quotes — they have a socialContext
-            const socialContext = article.querySelector('[data-testid="socialContext"]');
+            var socialContext = article.querySelector('[data-testid="socialContext"]');
 
-            // Find username — typically a link with role="link" containing /username
-            const links = article.querySelectorAll('a[role="link"]');
-            let username = '';
-            for (const link of links) {
-              const href = link.getAttribute('href') || '';
-              const match = href.match(/^\\/(\\w+)$/);
+            var links = article.querySelectorAll('a[role="link"]');
+            var username = '';
+            for (var j = 0; j < links.length; j++) {
+              var href = links[j].getAttribute('href') || '';
+              var match = href.match(/^\\/(\\w+)$/);
               if (match && match[1] !== 'i' && !match[1].startsWith('hashtag')) {
                 username = match[1];
                 break;
               }
             }
-            // Fallback: find text containing @
             if (!username) {
-              const spans = article.querySelectorAll('span');
-              for (const span of spans) {
-                if (span.textContent.startsWith('@')) {
-                  username = span.textContent.replace('@', '');
+              var spans2 = article.querySelectorAll('span');
+              for (var s = 0; s < spans2.length; s++) {
+                if (spans2[s].textContent.startsWith('@')) {
+                  username = spans2[s].textContent.replace('@', '');
                   break;
                 }
               }
@@ -214,8 +240,10 @@ async function scrapeWithSession(sessionId, url, onProgress) {
       `);
 
       let newInBatch = 0;
+      let endReached = false;
       const newComments = [];
       for (const c of batch) {
+        if (c._endReached) { endReached = true; break; }
         // Extract post text from the first article marker
         if (c._isPost) {
           if (!postText) postText = c.text;
@@ -233,10 +261,12 @@ async function scrapeWithSession(sessionId, url, onProgress) {
 
       if (newInBatch === 0) {
         noNewCount++;
-        if (noNewCount >= maxNoNew) break; // No new comments after several scrolls, stop
+        if (noNewCount >= maxNoNew) break;
       } else {
         noNewCount = 0;
       }
+
+      if (endReached) break;
 
       if (onProgress) onProgress({ found: comments.length, scroll: i + 1, total: maxScroll, newComments });
 
@@ -257,6 +287,7 @@ async function scrapeInSession(sessionId, url, onNewComment, onProgress) {
   const scrollDelay = parseInt(settings.scroll_delay) || 500;
 
   await cdp.navigatePage(sessionId, url);
+  await cdp.waitForPageLoad(sessionId);
   await cdp.waitForSelector(sessionId, 'article[data-testid="tweet"]', 30000);
 
   if (cancelFlag) return { comments: [], url };
@@ -275,7 +306,7 @@ async function scrapeInSession(sessionId, url, onNewComment, onProgress) {
   const seenTexts = new Set();
   let postText = '';
   let noNewCount = 0;
-  const maxNoNew = 3;
+  const maxNoNew = 8;
 
   for (let i = 0; i < maxScroll; i++) {
     if (cancelFlag) break;
@@ -296,44 +327,55 @@ async function scrapeInSession(sessionId, url, onNewComment, onProgress) {
           return result.trim();
         }
         const results = [];
-        const articles = document.querySelectorAll('article[data-testid="tweet"]');
-        let isFirst = true;
-        for (const article of articles) {
-          const textEl = article.querySelector('[data-testid="tweetText"]');
-          if (!textEl) continue;
-          const text = getTextWithEmojis(textEl);
+        var articles2 = document.querySelectorAll('article[data-testid="tweet"]');
+        var boundaryEl2 = null;
+        var allSpans2 = document.querySelectorAll('span');
+        for (var k2 = 0; k2 < allSpans2.length; k2++) {
+          var t2 = allSpans2[k2].textContent.trim();
+          if (t2 === '发现更多' || t2 === 'Discover more') {
+            boundaryEl2 = allSpans2[k2].closest('[data-testid="cellInnerDiv"]');
+            break;
+          }
+        }
+        var isFirst2 = true;
+        for (var i2 = 0; i2 < articles2.length; i2++) {
+          var article2 = articles2[i2];
+          if (boundaryEl2 && (boundaryEl2.compareDocumentPosition(article2) & 4)) break;
+          var textEl2 = article2.querySelector('[data-testid="tweetText"]');
+          if (!textEl2) continue;
+          var text2 = getTextWithEmojis(textEl2);
 
-          if (isFirst) {
-            results.push({ _isPost: true, text: text, username: '' });
-            isFirst = false;
+          if (isFirst2) {
+            results.push({ _isPost: true, text: text2, username: '' });
+            isFirst2 = false;
             continue;
           }
 
-          const socialContext = article.querySelector('[data-testid="socialContext"]');
+          var socialContext2 = article2.querySelector('[data-testid="socialContext"]');
 
-          const links = article.querySelectorAll('a[role="link"]');
-          let username = '';
-          for (const link of links) {
-            const href = link.getAttribute('href') || '';
-            const match = href.match(/^\\/(\\w+)$/);
-            if (match && match[1] !== 'i' && !match[1].startsWith('hashtag')) {
-              username = match[1];
+          var links2 = article2.querySelectorAll('a[role="link"]');
+          var username2 = '';
+          for (var j2 = 0; j2 < links2.length; j2++) {
+            var href2 = links2[j2].getAttribute('href') || '';
+            var match2 = href2.match(/^\\/(\\w+)$/);
+            if (match2 && match2[1] !== 'i' && !match2[1].startsWith('hashtag')) {
+              username2 = match2[1];
               break;
             }
           }
-          if (!username) {
-            const spans = article.querySelectorAll('span');
-            for (const span of spans) {
-              if (span.textContent.startsWith('@')) {
-                username = span.textContent.replace('@', '');
+          if (!username2) {
+            var spans3 = article2.querySelectorAll('span');
+            for (var s2 = 0; s2 < spans3.length; s2++) {
+              if (spans3[s2].textContent.startsWith('@')) {
+                username2 = spans3[s2].textContent.replace('@', '');
                 break;
               }
             }
           }
 
           results.push({
-            text: text,
-            username: username || 'unknown',
+            text: text2,
+            username: username2 || 'unknown',
           });
         }
         return results;
@@ -341,8 +383,10 @@ async function scrapeInSession(sessionId, url, onNewComment, onProgress) {
     `);
 
     let newInBatch = 0;
+    let endReached2 = false;
     const newComments = [];
     for (const c of batch) {
+      if (c._endReached) { endReached2 = true; break; }
       if (c._isPost) {
         if (!postText) postText = c.text;
         continue;
@@ -357,13 +401,12 @@ async function scrapeInSession(sessionId, url, onNewComment, onProgress) {
 
         if (onNewComment) {
           await onNewComment(c);
-          // Blocking a user removes their article from the DOM, which can
-          // cause the next few scrolls to show only already-seen comments.
-          // Reset the counter so we don't exit the loop prematurely.
           noNewCount = 0;
         }
       }
     }
+
+    if (endReached2) break;
 
     if (newInBatch === 0) {
       noNewCount++;

@@ -716,10 +716,17 @@ export default class AdminTrainView {
           },
           el('input', {
             type: 'text',
+            id: 'hf-repo-input',
+            placeholder: 'username/repo-name',
+            style:
+              'width:200px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)',
+          }),
+          el('input', {
+            type: 'text',
             id: 'hf-token-input',
             placeholder: 'HF_TOKEN (hf_xxx)',
             style:
-              'width:260px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)',
+              'width:220px;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text)',
           }),
           el(
             'button',
@@ -814,6 +821,13 @@ export default class AdminTrainView {
       return;
     }
 
+    const repoEl = document.getElementById('hf-repo-input');
+    const repo = repoEl ? repoEl.value.trim() : '';
+    if (!repo) {
+      this.appendLog(t('train.upload_repo_required'), 'log-line');
+      return;
+    }
+
     const btn = document.getElementById('btn-upload-hf');
     if (btn) {
       btn.disabled = true;
@@ -824,7 +838,7 @@ export default class AdminTrainView {
     document.getElementById('train-log').innerHTML = '';
     this.appendLog(t('train.uploading'), 'log-line');
 
-    const res = await apiInvoke('model:upload-finetuned', null, token);
+    const res = await apiInvoke('model:upload-finetuned', repo, token);
 
     if (res.success) {
       this.appendLog(t('train.upload_done'), 'log-line success');

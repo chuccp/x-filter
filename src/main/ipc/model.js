@@ -46,7 +46,7 @@ function register() {
   ipcMain.handle('model:download-finetuned', async (event, repo) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
-      const py = getPythonCommand();
+      const py = await getPythonCommand();
       if (!py)
         return { success: false, error: t('train.python_not_found_error') };
 
@@ -166,7 +166,7 @@ function register() {
   ipcMain.handle('model:upload-finetuned', async (event, repo, token) => {
     try {
       const win = BrowserWindow.fromWebContents(event.sender);
-      const py = getPythonCommand();
+      const py = await getPythonCommand();
       if (!py)
         return { success: false, error: t('train.python_not_found_error') };
 

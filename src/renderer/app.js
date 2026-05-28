@@ -55,6 +55,32 @@ async function init() {
 
   switchView('connect');
 
+  // Bind download model button globally — the view is lazy-loaded so we
+  // can't rely on UserBlockView.bindEvents() running before the button is clicked.
+  const dlBtn = document.getElementById('btn-download-model');
+  if (dlBtn) {
+    dlBtn.addEventListener('click', () => {
+      const overlay = document.getElementById('modal-download-model');
+      if (!overlay) return;
+      overlay.style.display = 'flex';
+      const closeModal = () => { overlay.style.display = 'none'; };
+      overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+      overlay.querySelectorAll('[data-close]').forEach(b => { b.onclick = closeModal; });
+      document.getElementById('modal-download-model-confirm').onclick = async () => {
+        const urlInput = document.getElementById('modal-download-model-url');
+        const raw = (urlInput?.value || '').trim();
+        const repo = raw.replace(/^https?:\/\/huggingface\.co\//, '').replace(/\/$/, '');
+        closeModal();
+        // Ensure the view is loaded so downloadModel() is available
+        if (!loadedViews['block']) {
+          loadedViews['block'] = true;
+          await loadView('block');
+        }
+        viewModules['block']?.downloadModel(repo);
+      };
+    });
+  }
+
   ipcRenderer.on('cdp:disconnected', () => updateSidebarStatus(false));
 }
 

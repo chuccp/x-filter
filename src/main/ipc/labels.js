@@ -38,6 +38,15 @@ function register() {
     }
   });
 
+  ipcMain.handle('labels:delete', async (event, id) => {
+    try {
+      db.deleteComment(id);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
   ipcMain.handle('labels:stats', async () => {
     try {
       return { success: true, stats: db.getLabelStats() };

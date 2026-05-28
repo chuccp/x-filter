@@ -80,7 +80,7 @@ async function initDatabase() {
   const defaults = {
     spam_threshold: '0.8',
     max_scroll: '50',
-    scroll_delay: '500',
+    scroll_delay: '1500',
     language: 'zh-CN',
   };
   for (const [k, v] of Object.entries(defaults)) {
@@ -129,6 +129,12 @@ function closeDatabase() {
 }
 
 // ── Comments ────────────────────────────────────────────────
+
+function deleteComment(id) {
+  db.run('DELETE FROM comments WHERE id = ?', [id]);
+  save();
+  return db.getRowsModified() > 0;
+}
 
 function insertComments(comments) {
   let count = 0;
@@ -395,6 +401,7 @@ module.exports = {
   closeDatabase,
   getDb,
   save,
+  deleteComment,
   insertComments,
   getUnlabeledComments,
   getLabeledComments,
