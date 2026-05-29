@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -47,10 +50,10 @@ jobs:
         with:
           name: x-filter-${{ matrix.platform }}
           path: |
-            dist-electron/*.exe
-            dist-electron/*.dmg
-            dist-electron/*.AppImage
-            dist-electron/*.snap
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.snap
           if-no-files-found: ignore
 
   release:
