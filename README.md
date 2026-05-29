@@ -49,22 +49,13 @@ npm install
 
 ### 2. 开启 Chrome 远程调试
 
-启动 Chrome 时添加参数：
+打开 Chrome 浏览器，在地址栏输入：
 
-**Windows:**
-```cmd
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+```
+chrome://inspect/#remote-debugging
 ```
 
-**macOS:**
-```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
-```
-
-**Linux:**
-```bash
-google-chrome --remote-debugging-port=9222
-```
+然后将 **"Allow remote debugging"** 切换为开启状态。
 
 ### 3. 启动应用
 
