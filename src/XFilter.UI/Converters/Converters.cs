@@ -10,10 +10,13 @@ public static class AppConverters
     // Role
     public static readonly IValueConverter IsAdmin =
         new FuncValueConverter<string, bool>(role => role == "admin");
-    public static readonly IValueConverter RoleBgLight = new RoleColorConverter(
+    public static readonly IValueConverter RoleBg = new RoleColorConverter(
         new SolidColorBrush(Color.Parse("#3b82f6")), new SolidColorBrush(Color.Parse("#f1f5f9")));
-    public static readonly IValueConverter RoleFgLight = new RoleColorConverter(
+    public static readonly IValueConverter RoleFg = new RoleColorConverter(
         new SolidColorBrush(Colors.White), new SolidColorBrush(Color.Parse("#475569")));
+    // Legacy aliases
+    public static readonly IValueConverter RoleBgLight = RoleBg;
+    public static readonly IValueConverter RoleFgLight = RoleFg;
 
     // Connection
     public static readonly IValueConverter ConnectedColor =

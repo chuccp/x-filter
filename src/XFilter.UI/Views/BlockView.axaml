@@ -16,12 +16,12 @@
                 <Border Background="#f8fafc" CornerRadius="6" Padding="8,6"
                         BorderBrush="#e2e8f0" BorderThickness="1">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="{Binding ModelInfo}" Foreground="#64748b"
-                                   FontSize="12" VerticalAlignment="Center"/>
-                        <Button Content="{DynamicResource block.btn_download_model}" Width="72" Height="26"
+                        <SelectableTextBlock Text="{Binding ModelInfo}" Classes="StatusText"
+                                   VerticalAlignment="Center"/>
+                        <Button Content="{DynamicResource block.btn_download_model}" Width="80" Height="28"
                                 Background="#3b82f6" Foreground="White" FontSize="11" CornerRadius="4"
                                 Command="{Binding DownloadModelCommand}"/>
-                        <Button Content="{DynamicResource block.btn_load_model}" Width="72" Height="26"
+                        <Button Content="{DynamicResource block.btn_load_model}" Width="80" Height="28"
                                 Background="#10b981" Foreground="White" FontSize="11" CornerRadius="4"
                                 Command="{Binding LoadModelCommand}"/>
                     </StackPanel>
@@ -60,7 +60,7 @@
                             IsVisible="{Binding IsRunning}"/>
                 </StackPanel>
 
-                <TextBlock Text="{Binding Status}" FontSize="12" Foreground="#64748b"/>
+                <SelectableTextBlock Text="{Binding Status}" Classes="StatusText"/>
             </StackPanel>
         </Border>
 
@@ -75,8 +75,8 @@
                         BorderBrush="#e2e8f0" BorderThickness="1"
                         MinHeight="200" MaxHeight="350">
                     <ScrollViewer>
-                        <TextBlock Text="{Binding Log}" Foreground="#475569" FontSize="11"
-                                   FontFamily="Consolas"/>
+                        <SelectableTextBlock Text="{Binding Log}" Classes="LogText"
+                                   TextWrapping="Wrap"/>
                     </ScrollViewer>
                 </Border>
             </StackPanel>

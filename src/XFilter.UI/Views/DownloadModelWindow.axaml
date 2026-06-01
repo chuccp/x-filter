@@ -8,15 +8,12 @@
         WindowStartupLocation="CenterOwner"
         Background="#f1f5f9">
     <Grid RowDefinitions="Auto,*,Auto" Margin="24,20">
-        <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
             <TextBlock Text="🧠" FontSize="18"/>
             <TextBlock Text="{Binding WindowTitle}" FontSize="16" FontWeight="Bold" Foreground="#0f172a" VerticalAlignment="Center"/>
         </StackPanel>
 
-        <!-- Content -->
         <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*">
-            <!-- Repo input (before download starts) -->
             <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10"
                         IsVisible="{Binding HasStarted, Converter={x:Static conv:AppConverters.Not}}">
                 <TextBlock Text="{Binding RepoLabel}" FontSize="12" Foreground="#64748b"/>
@@ -25,25 +22,24 @@
                          FontSize="12" Height="32"/>
             </StackPanel>
 
-            <!-- Overall status + progress -->
             <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,8"
                         IsVisible="{Binding HasStarted}">
                 <TextBox Text="{Binding Status}" Foreground="#475569" FontSize="12"
                          Background="Transparent" BorderThickness="0" IsReadOnly="True"
                          TextWrapping="Wrap"/>
                 <StackPanel Spacing="4" IsVisible="{Binding IsDownloading}">
+                    <!-- Overall progress line -->
                     <ProgressBar Value="{Binding Percent}" Minimum="0" Maximum="100"
-                                 Height="6" Foreground="#3b82f6" Background="#e2e8f0"/>
-                    <TextBlock Text="{Binding CurrentFile}" Foreground="#94a3b8" FontSize="11"
+                                 Height="4" Foreground="#3b82f6" Background="#e2e8f0"
+                                 CornerRadius="2"/>
+                    <SelectableTextBlock Text="{Binding CurrentFile}" Foreground="#94a3b8" FontSize="11"
                                TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </StackPanel>
 
-            <!-- Initial hint -->
-            <TextBlock Grid.Row="1" Text="{Binding Status}" Foreground="#64748b" FontSize="12"
+            <SelectableTextBlock Grid.Row="1" Text="{Binding Status}" Classes="StatusText"
                        IsVisible="{Binding HasStarted, Converter={x:Static conv:AppConverters.Not}}"/>
 
-            <!-- File list -->
             <ScrollViewer Grid.Row="2" IsVisible="{Binding HasStarted}">
                 <ItemsControl ItemsSource="{Binding Files}">
                     <ItemsControl.ItemTemplate>
@@ -56,7 +52,7 @@
                                                 Margin="0,0,0,2">
                                         <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="Bold"
                                                    Foreground="#3b82f6" VerticalAlignment="Center" Width="20"/>
-                                        <TextBlock Text="{Binding Name}" FontSize="11" Foreground="#0f172a"
+                                        <SelectableTextBlock Text="{Binding Name}" FontSize="11" Foreground="#0f172a"
                                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
                                     <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding SizeDisplay}"
@@ -64,7 +60,7 @@
                                                Margin="8,0,0,0"/>
                                     <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
                                                  Value="{Binding Percent}" Minimum="0" Maximum="100"
-                                                 Height="3" Foreground="#10b981" Background="#e2e8f0"
+                                                 Height="4" Foreground="#10b981" Background="Transparent"
                                                  Margin="26,2,0,0"/>
                                 </Grid>
                             </Border>
@@ -74,11 +70,9 @@
             </ScrollViewer>
         </Grid>
 
-        <!-- Error hint -->
-        <TextBlock Grid.Row="2" Text="{Binding ErrorHint}" Foreground="#ef4444" FontSize="12"
+        <SelectableTextBlock Grid.Row="2" Text="{Binding ErrorHint}" Classes="ErrorText"
                    IsVisible="{Binding HasError}" Margin="0,8"/>
 
-        <!-- Buttons -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
                     VerticalAlignment="Bottom">
             <Button Content="{Binding StartButton}" Command="{Binding StartDownloadCommand}"

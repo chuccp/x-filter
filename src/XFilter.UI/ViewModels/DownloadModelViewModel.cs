@@ -109,9 +109,11 @@ public partial class DownloadModelViewModel : ViewModelBase
                 Environment.SpecialFolder.LocalApplicationData), "x-filter", "models", "x-spam-classifier");
 
             var skipped = 0;
+            var reDownloaded = 0;
             for (int i = 0; i < Files.Count; i++)
             {
                 var item = Files[i];
+                item.Percent = 0;
                 item.Status = "⬇";
                 CurrentFile = item.Name;
                 Status = _i18n.T("download.downloading",
@@ -122,10 +124,19 @@ public partial class DownloadModelViewModel : ViewModelBase
                     var dest = Path.Combine(dir, item.Name);
                     if (File.Exists(dest))
                     {
-                        item.Status = "✓";
-                        item.Percent = 100;
-                        skipped++;
-                        continue;
+                        // Verify file integrity by checking size
+                        var existingInfo = new FileInfo(dest);
+                        if (item.Size > 0 && existingInfo.Length == item.Size)
+                        {
+                            item.Status = "✓";
+                            item.Percent = 100;
+                            UpdateGlobalPercent();
+                            skipped++;
+                            continue;
+                        }
+                        // File exists but size mismatch — delete and re-download
+                        File.Delete(dest);
+                        reDownloaded++;
                     }
 
                     await _downloader.DownloadFileAsync(Repo,
@@ -136,13 +147,12 @@ public partial class DownloadModelViewModel : ViewModelBase
                             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                             {
                                 item.Percent = progress.Percent;
-                                var done = (double)Files.Sum(f => (long)(f.Percent / 100.0 * f.Size));
-                                var total = (double)Math.Max(1, Files.Sum(f => f.Size));
-                                Percent = (int)Math.Round(done / total * 100);
+                                UpdateGlobalPercent();
                             });
                         });
                     item.Percent = 100;
                     item.Status = "✓";
+                    UpdateGlobalPercent();
                 }
                 catch (OperationCanceledException)
                 {
@@ -161,7 +171,14 @@ public partial class DownloadModelViewModel : ViewModelBase
                 }
             }
 
-            Status = _i18n.T("download.complete");
+            if (reDownloaded > 0)
+                Status = _i18n.T("download.complete") + " " +
+                    _i18n.T("download.re_downloaded", new() { ["count"] = $"{reDownloaded}" });
+            else if (skipped > 0)
+                Status = _i18n.T("download.complete") + " " +
+                    _i18n.T("download.skipped", new() { ["count"] = $"{skipped}" });
+            else
+                Status = _i18n.T("download.complete");
             IsDownloading = false;
             IsComplete = true;
         }
@@ -201,6 +218,13 @@ public partial class DownloadModelViewModel : ViewModelBase
             Status = _i18n.T("download.model_load_failed", new() { ["error"] = ex.Message });
         }
         CloseRequested?.Invoke(ModelLoaded);
+    }
+
+    private void UpdateGlobalPercent()
+    {
+        var done = (double)Files.Sum(f => (long)(f.Percent / 100.0 * f.Size));
+        var total = (double)Math.Max(1, Files.Sum(f => f.Size));
+        Percent = (int)Math.Round(done / total * 100);
     }
 
     [RelayCommand]

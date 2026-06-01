@@ -44,13 +44,13 @@
                                         <TextBlock Text="{Binding Label, Converter={x:Static conv:AppConverters.LabelText}}"
                                                    FontSize="11" Foreground="White"/>
                                     </Border>
-                                    <TextBlock Grid.Column="1" Grid.Row="0"
+                                    <SelectableTextBlock Grid.Column="1" Grid.Row="0"
                                                Text="{Binding Text}" FontSize="13" Foreground="#0f172a"
                                                TextTrimming="CharacterEllipsis" MaxWidth="500"/>
                                     <TextBlock Grid.Column="2" Grid.Row="0" Grid.RowSpan="2"
                                                Text="{Binding Username, StringFormat='@\\{0\\}'}"
                                                FontSize="11" Foreground="#3b82f6" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Grid.Row="1"
+                                    <SelectableTextBlock Grid.Column="1" Grid.Row="1"
                                                Text="{Binding PostText}" FontSize="10" Foreground="#94a3b8"
                                                TextTrimming="CharacterEllipsis" MaxWidth="500"/>
                                 </Grid>

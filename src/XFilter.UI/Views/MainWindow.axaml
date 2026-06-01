@@ -6,41 +6,53 @@
         x:Class="XFilter.UI.Views.MainWindow"
         x:Name="Root"
         Title="x-filter — X Spam Filter"
-        Width="900" Height="700"
-        MinWidth="800" MinHeight="600"
-        Background="#f1f5f9">
+        Width="940" Height="720"
+        MinWidth="840" MinHeight="600"
+        Background="{StaticResource PageBg}">
     <Design.DataContext>
         <vm:MainViewModel/>
     </Design.DataContext>
 
-    <Grid ColumnDefinitions="220,*">
-        <!-- Sidebar -->
-        <Border Grid.Column="0" Background="#ffffff" BorderBrush="#e2e8f0" BorderThickness="0,0,1,0">
-            <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
+    <Grid ColumnDefinitions="230,*">
+        <!-- ===== SIDEBAR ===== -->
+        <Border Grid.Column="0" Background="{StaticResource CardBg}"
+                BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16">
                 <!-- Brand -->
-                <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                    <TextBlock Text="🛡" FontSize="28"/>
-                    <TextBlock Text="x-filter" FontSize="20" FontWeight="Bold" Foreground="#0f172a" Margin="0,4,0,0"/>
-                    <TextBlock Text="{DynamicResource app.subtitle}" FontSize="11" Foreground="#94a3b8"/>
+                <StackPanel Grid.Row="0" Margin="4,4,0,20">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Border Background="{StaticResource AccentColor}" CornerRadius="8"
+                                Width="32" Height="32">
+                            <TextBlock Text="🛡" FontSize="16"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel>
+                            <TextBlock Text="x-filter" FontSize="16" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimary}"/>
+                            <TextBlock Text="{DynamicResource app.subtitle}" FontSize="11"
+                                       Foreground="{StaticResource TextHint}"/>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Role Toggle -->
-                <Border Grid.Row="1" Background="#f1f5f9" CornerRadius="6" Padding="3" Margin="0,0,0,12">
+                <Border Grid.Row="1" Background="{StaticResource SurfaceBg}"
+                        CornerRadius="8" Padding="3" Margin="0,0,0,16">
                     <Grid ColumnDefinitions="*,*">
-                        <Border Grid.Column="0" CornerRadius="4" Padding="6,4"
-                                Background="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleBgLight}, ConverterParameter=admin}"
+                        <Border Grid.Column="0" CornerRadius="6" Padding="6,5"
+                                Background="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleBg}, ConverterParameter=admin}"
                                 Cursor="Hand"
                                 PointerPressed="RoleToggle_Click" Tag="admin">
                             <TextBlock Text="{DynamicResource app.role_admin}" FontSize="12" FontWeight="Medium"
-                                       Foreground="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleFgLight}, ConverterParameter=admin}"
+                                       Foreground="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleFg}, ConverterParameter=admin}"
                                        HorizontalAlignment="Center"/>
                         </Border>
-                        <Border Grid.Column="1" CornerRadius="4" Padding="6,4" Margin="2,0,0,0"
-                                Background="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleBgLight}, ConverterParameter=user}"
+                        <Border Grid.Column="1" CornerRadius="6" Padding="6,5" Margin="2,0,0,0"
+                                Background="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleBg}, ConverterParameter=user}"
                                 Cursor="Hand"
                                 PointerPressed="RoleToggle_Click" Tag="user">
                             <TextBlock Text="{DynamicResource app.role_user}" FontSize="12" FontWeight="Medium"
-                                       Foreground="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleFgLight}, ConverterParameter=user}"
+                                       Foreground="{Binding CurrentRole, Converter={x:Static conv:AppConverters.RoleFg}, ConverterParameter=user}"
                                        HorizontalAlignment="Center"/>
                         </Border>
                     </Grid>
@@ -48,86 +60,84 @@
 
                 <!-- Nav Items -->
                 <StackPanel Grid.Row="2" Spacing="2">
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="connect">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚡" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.connect}" Foreground="#0f172a" FontSize="13"/>
+                    <Button Classes="NavBtn Active" Command="{Binding NavigateCommand}" CommandParameter="connect">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="⚡" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.connect}" Classes="Body" FontSize="13"/>
                         </StackPanel>
                     </Button>
-                    <Border Height="1" Background="#e2e8f0" Margin="4,8"/>
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="collect"
+                    <Border Height="1" Background="{StaticResource BorderColor}" Margin="8,6"/>
+                    <Button Classes="NavBtn" Command="{Binding NavigateCommand}" CommandParameter="collect"
                             IsVisible="{Binding CurrentRole, Converter={x:Static conv:AppConverters.IsAdmin}}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📥" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.collect}" Foreground="#0f172a" FontSize="13"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="📥" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.collect}" FontSize="13"/>
                         </StackPanel>
                     </Button>
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="label"
+                    <Button Classes="NavBtn" Command="{Binding NavigateCommand}" CommandParameter="label"
                             IsVisible="{Binding CurrentRole, Converter={x:Static conv:AppConverters.IsAdmin}}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🏷" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.label}" Foreground="#0f172a" FontSize="13"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="🏷" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.label}" FontSize="13"/>
                         </StackPanel>
                     </Button>
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="export"
+                    <Button Classes="NavBtn" Command="{Binding NavigateCommand}" CommandParameter="export"
                             IsVisible="{Binding CurrentRole, Converter={x:Static conv:AppConverters.IsAdmin}}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📋" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.data}" Foreground="#0f172a" FontSize="13"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="📋" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.data}" FontSize="13"/>
                         </StackPanel>
                     </Button>
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="train"
+                    <Button Classes="NavBtn" Command="{Binding NavigateCommand}" CommandParameter="train"
                             IsVisible="{Binding CurrentRole, Converter={x:Static conv:AppConverters.IsAdmin}}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🧠" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.train}" Foreground="#0f172a" FontSize="13"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="🧠" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.train}" FontSize="13"/>
                         </StackPanel>
                     </Button>
-                    <Border Height="1" Background="#e2e8f0" Margin="4,8"/>
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="block">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🛡" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.block}" Foreground="#0f172a" FontSize="13"/>
+                    <Border Height="1" Background="{StaticResource BorderColor}" Margin="8,6"/>
+                    <Button Classes="NavBtn" Command="{Binding NavigateCommand}" CommandParameter="block">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="🛡" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.block}" FontSize="13"/>
                         </StackPanel>
                     </Button>
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="blocklist">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📋" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.blocklist}" Foreground="#0f172a" FontSize="13"/>
+                    <Button Classes="NavBtn" Command="{Binding NavigateCommand}" CommandParameter="blocklist">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="📋" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.blocklist}" FontSize="13"/>
                         </StackPanel>
                     </Button>
-                    <Button Padding="8,6" Background="Transparent"
-                            Command="{Binding NavigateCommand}" CommandParameter="settings"
+                    <Button Classes="NavBtn" Command="{Binding NavigateCommand}" CommandParameter="settings"
                             IsVisible="{Binding CurrentRole, Converter={x:Static conv:AppConverters.IsAdmin}}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚙" Margin="0,0,10,0"/>
-                            <TextBlock Text="{DynamicResource nav.settings}" Foreground="#0f172a" FontSize="13"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="⚙" FontSize="14"/>
+                            <TextBlock Text="{DynamicResource nav.settings}" FontSize="13"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
 
                 <!-- Footer -->
-                <StackPanel Grid.Row="3">
-                    <StackPanel Orientation="Horizontal">
+                <StackPanel Grid.Row="3" Spacing="10">
+                    <Border Height="1" Background="{StaticResource BorderColor}" Margin="0,4"/>
+                    <!-- Connection status -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
                         <Border Width="8" Height="8" CornerRadius="4"
-                                Background="{Binding IsConnected, Converter={x:Static conv:AppConverters.ConnectedColor}}"/>
-                        <TextBlock Text="{Binding ModelInfoText}" FontSize="10"
-                                   Foreground="#64748b" Margin="6,0,0,0"/>
+                                Background="{Binding IsConnected, Converter={x:Static conv:AppConverters.ConnectedColor}}"
+                                VerticalAlignment="Center"/>
+                        <SelectableTextBlock Text="{Binding ModelInfoText}" FontSize="11"
+                                   Foreground="{StaticResource TextHint}"
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    <ComboBox Name="LangCombo" SelectedIndex="0" FontSize="11" Margin="0,8,0,0"
-                              Background="#f1f5f9" Foreground="#475569" BorderBrush="#e2e8f0"
+                    <!-- Language selector -->
+                    <ComboBox Name="LangCombo" SelectedIndex="0" FontSize="11"
+                              Background="{StaticResource SurfaceBg}" Foreground="{StaticResource TextSecondary}"
+                              BorderBrush="{StaticResource BorderColor}"
                               SelectionChanged="LangCombo_SelectionChanged"
                               ItemsSource="{Binding LanguageItems}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate DataType="vm:LanguageItem">
-                                <TextBlock Text="{Binding Label}"/>
+                                <TextBlock Text="{Binding Label}" FontSize="12"/>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
@@ -135,8 +145,8 @@
             </Grid>
         </Border>
 
-        <!-- Content -->
-        <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Padding="16">
+        <!-- ===== CONTENT ===== -->
+        <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Padding="20">
             <ContentControl.DataTemplates>
                 <DataTemplate DataType="vm:ConnectViewModel">
                     <views:ConnectView/>

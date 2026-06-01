@@ -257,9 +257,9 @@ public class DatabaseService : IDatabaseService
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"SELECT
             COUNT(*) as total,
-            SUM(CASE WHEN label = 1 THEN 1 ELSE 0 END) as spam,
-            SUM(CASE WHEN label = 0 THEN 1 ELSE 0 END) as not_spam,
-            SUM(CASE WHEN label IS NULL THEN 1 ELSE 0 END) as unlabeled
+            COALESCE(SUM(CASE WHEN label = 1 THEN 1 ELSE 0 END), 0) as spam,
+            COALESCE(SUM(CASE WHEN label = 0 THEN 1 ELSE 0 END), 0) as not_spam,
+            COALESCE(SUM(CASE WHEN label IS NULL THEN 1 ELSE 0 END), 0) as unlabeled
             FROM comments";
         using var reader = cmd.ExecuteReader();
         if (reader.Read())

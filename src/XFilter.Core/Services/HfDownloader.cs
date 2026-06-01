@@ -68,6 +68,11 @@ public class HfDownloader : IHfDownloader
         var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 
+        // Use Content-Length from response as fallback when HF API size is 0
+        var totalSize = file.Size;
+        if (totalSize <= 0 && response.Content.Headers.ContentLength.HasValue)
+            totalSize = response.Content.Headers.ContentLength.Value;
+
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         await using var fs = File.Create(dest);
         var buffer = new byte[81920];
@@ -80,8 +85,8 @@ public class HfDownloader : IHfDownloader
             await fs.WriteAsync(buffer.AsMemory(0, read), ct);
             downloaded += read;
 
-            var pct = file.Size > 0
-                ? (int)Math.Round((double)downloaded / file.Size * 100)
+            var pct = totalSize > 0
+                ? (int)Math.Round((double)downloaded / totalSize * 100)
                 : 0;
 
             onProgress?.Invoke(new DownloadProgress
@@ -89,7 +94,7 @@ public class HfDownloader : IHfDownloader
                 Type = "progress",
                 File = file.Name,
                 Downloaded = downloaded,
-                Total = file.Size,
+                Total = totalSize,
                 Percent = pct
             });
         }

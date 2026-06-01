@@ -29,8 +29,8 @@
                     <Border Width="{Binding Progress}" Background="#3b82f6" CornerRadius="3"
                             HorizontalAlignment="Left" MinWidth="0"/>
                 </Border>
-                <TextBlock Text="{Binding ProgressText}" FontSize="12" Foreground="#64748b"/>
-                <TextBlock Text="{Binding Status}" FontSize="12" Foreground="#0f172a"/>
+                <SelectableTextBlock Text="{Binding ProgressText}" Classes="StatusText"/>
+                <SelectableTextBlock Text="{Binding Status}" Classes="InfoText" Foreground="#0f172a"/>
             </StackPanel>
         </Border>
 
@@ -43,7 +43,7 @@
                 <ItemsControl ItemsSource="{Binding History}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding}" FontSize="12" Foreground="#475569" Margin="0,2"/>
+                            <SelectableTextBlock Text="{Binding}" FontSize="12" Foreground="#475569" Margin="0,2"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

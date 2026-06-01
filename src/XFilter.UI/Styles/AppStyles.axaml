@@ -1,0 +1,63 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Global color palette -->
+    <Style Selector=":is(Control)">
+        <Style.Resources>
+            <SolidColorBrush x:Key="PageBg" Color="#f1f5f9"/>
+            <SolidColorBrush x:Key="CardBg" Color="#ffffff"/>
+            <SolidColorBrush x:Key="SurfaceBg" Color="#f8fafc"/>
+            <SolidColorBrush x:Key="SidebarActiveBg" Color="#eff6ff"/>
+            <SolidColorBrush x:Key="BorderColor" Color="#e2e8f0"/>
+            <SolidColorBrush x:Key="TextPrimary" Color="#0f172a"/>
+            <SolidColorBrush x:Key="TextSecondary" Color="#475569"/>
+            <SolidColorBrush x:Key="TextMuted" Color="#64748b"/>
+            <SolidColorBrush x:Key="TextHint" Color="#94a3b8"/>
+            <SolidColorBrush x:Key="AccentColor" Color="#3b82f6"/>
+            <SolidColorBrush x:Key="AccentLight" Color="#dbeafe"/>
+            <SolidColorBrush x:Key="SuccessColor" Color="#10b981"/>
+            <SolidColorBrush x:Key="DangerColor" Color="#ef4444"/>
+        </Style.Resources>
+    </Style>
+
+    <!-- SelectableTextBlock — match TextBlock look but allow copy -->
+    <Style Selector="SelectableTextBlock">
+        <Setter Property="SelectionBrush" Value="#93c5fd"/>
+        <Setter Property="SelectionForegroundBrush" Value="#0f172a"/>
+    </Style>
+    <Style Selector="SelectableTextBlock.LogText">
+        <Setter Property="FontFamily" Value="Consolas"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="#475569"/>
+    </Style>
+    <Style Selector="SelectableTextBlock.StatusText">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#64748b"/>
+    </Style>
+    <Style Selector="SelectableTextBlock.InfoText">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#475569"/>
+    </Style>
+    <Style Selector="SelectableTextBlock.ErrorText">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#ef4444"/>
+    </Style>
+
+    <!-- Sidebar navigation buttons -->
+    <Style Selector="Button.NavBtn">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="Button.NavBtn:pointerover">
+        <Setter Property="Background" Value="#f1f5f9"/>
+    </Style>
+    <Style Selector="Button.NavBtn.Active">
+        <Setter Property="Background" Value="#eff6ff"/>
+    </Style>
+    <Style Selector="Button.NavBtn.Active TextBlock">
+        <Setter Property="Foreground" Value="#3b82f6"/>
+    </Style>
+
+</Styles>

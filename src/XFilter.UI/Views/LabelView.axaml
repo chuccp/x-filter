@@ -5,7 +5,6 @@
              x:Class="XFilter.UI.Views.LabelView"
              x:DataType="vm:LabelViewModel">
     <StackPanel Spacing="16">
-        <!-- Stats + Filter Bar -->
         <Border Background="#ffffff" CornerRadius="10" Padding="16" BorderBrush="#e2e8f0" BorderThickness="1">
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -26,11 +25,10 @@
                             Width="48" Height="28" FontSize="11" CornerRadius="4"
                             Background="Transparent" Foreground="#475569" BorderBrush="#e2e8f0" BorderThickness="1"/>
                 </StackPanel>
-                <TextBlock Text="{Binding StatsText}" FontSize="11" Foreground="#64748b"/>
+                <SelectableTextBlock Text="{Binding StatsText}" FontSize="11" Foreground="#64748b"/>
             </StackPanel>
         </Border>
 
-        <!-- Comment Card -->
         <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1"
                 IsVisible="{Binding HasComments}">
             <StackPanel Spacing="12">
@@ -38,25 +36,23 @@
                     <TextBlock Text="{Binding IndexText}" FontSize="12" Foreground="#64748b"/>
                     <TextBlock Text="{Binding CommentUser}" FontSize="13" FontWeight="Bold" Foreground="#0f172a"/>
                 </StackPanel>
-                <TextBlock Text="{Binding PostText}" FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+                <SelectableTextBlock Text="{Binding PostText}" FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
                 <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1">
-                    <TextBlock Text="{Binding CommentText}" FontSize="14" Foreground="#0f172a" TextWrapping="Wrap"/>
+                    <SelectableTextBlock Text="{Binding CommentText}" FontSize="14" Foreground="#0f172a" TextWrapping="Wrap"/>
                 </Border>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Content="{DynamicResource label.btn_spam}" Command="{Binding SpamCommand}" Width="100" Height="36"
                             Background="#ef4444" Foreground="White" FontSize="13" CornerRadius="6"/>
                     <Button Content="{DynamicResource label.btn_not_spam}" Command="{Binding NotSpamCommand}" Width="100" Height="36"
                             Background="#10b981" Foreground="White" FontSize="13" CornerRadius="6"/>
-                    <Button Content="删除" Command="{Binding DeleteCommand}" Width="60" Height="36"
+                    <Button Content="{DynamicResource label.btn_delete}" Command="{Binding DeleteCommand}" Width="60" Height="36"
                             Background="Transparent" Foreground="#ef4444" BorderBrush="#e2e8f0"
                             BorderThickness="1" FontSize="13" CornerRadius="6"/>
                 </StackPanel>
-                <TextBlock Text="{DynamicResource label.shortcuts}"
-                           FontSize="10" Foreground="#94a3b8"/>
+                <TextBlock Text="{DynamicResource label.shortcuts}" FontSize="10" Foreground="#94a3b8"/>
             </StackPanel>
         </Border>
 
-        <!-- Batch ops -->
         <Border Background="#ffffff" CornerRadius="10" Padding="16" BorderBrush="#e2e8f0" BorderThickness="1">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center"/>

@@ -5,7 +5,6 @@
              x:Class="XFilter.UI.Views.TrainView"
              x:DataType="vm:TrainViewModel">
     <StackPanel Spacing="16">
-        <!-- Environment -->
         <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
             <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -14,7 +13,7 @@
                 </StackPanel>
                 <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1">
                     <StackPanel Spacing="4">
-                        <TextBlock Text="{Binding EnvInfo}" FontSize="12" Foreground="#475569"/>
+                        <SelectableTextBlock Text="{Binding EnvInfo}" Classes="InfoText"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
                             <Button Content="{DynamicResource train.env_btn_recheck}" Command="{Binding CheckEnvCommand}" Width="80" Height="28"
                                     Background="#3b82f6" Foreground="White" FontSize="11" CornerRadius="4"/>
@@ -27,10 +26,12 @@
             </StackPanel>
         </Border>
 
-        <!-- Training Config -->
         <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
             <StackPanel Spacing="8">
-                <TextBlock Text="{DynamicResource train.training_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚡" FontSize="14"/>
+                    <TextBlock Text="{DynamicResource train.training_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="16">
                     <StackPanel Spacing="4">
                         <TextBlock Text="{DynamicResource train.epochs_label}" FontSize="12" Foreground="#64748b"/>
@@ -50,19 +51,21 @@
                             BorderThickness="1" FontSize="13" CornerRadius="6"
                             IsVisible="{Binding IsTraining}" VerticalAlignment="Bottom"/>
                 </StackPanel>
-                <TextBlock Text="{Binding EpochProgress}" FontSize="12" Foreground="#3b82f6"/>
-                <TextBlock Text="{Binding TrainedModelInfo}" FontSize="12" Foreground="#10b981"/>
+                <SelectableTextBlock Text="{Binding EpochProgress}" Classes="InfoText" Foreground="#3b82f6"/>
+                <SelectableTextBlock Text="{Binding TrainedModelInfo}" Classes="InfoText" Foreground="#10b981"/>
             </StackPanel>
         </Border>
 
-        <!-- Log -->
         <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
             <StackPanel Spacing="8">
-                <TextBlock Text="{DynamicResource train.log_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="📜" FontSize="14"/>
+                    <TextBlock Text="{DynamicResource train.log_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                </StackPanel>
                 <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1"
                         MinHeight="200" MaxHeight="300">
                     <ScrollViewer>
-                        <TextBlock Text="{Binding Log}" Foreground="#475569" FontSize="11" FontFamily="Consolas"/>
+                        <SelectableTextBlock Text="{Binding Log}" Classes="LogText" TextWrapping="Wrap"/>
                     </ScrollViewer>
                 </Border>
             </StackPanel>

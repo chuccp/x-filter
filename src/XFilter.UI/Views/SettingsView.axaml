@@ -10,7 +10,6 @@
                     <TextBlock Text="⚙" FontSize="16"/>
                     <TextBlock Text="{DynamicResource settings.title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
                 </StackPanel>
-
                 <StackPanel Spacing="4">
                     <TextBlock Text="{DynamicResource settings.scroll_label}" FontSize="12" Foreground="#64748b"/>
                     <TextBox Text="{Binding MaxScroll}" Width="120"
@@ -31,7 +30,7 @@
                 </StackPanel>
                 <Button Content="{DynamicResource settings.btn_save}" Command="{Binding SaveCommand}" Width="100" Height="34"
                         Background="#3b82f6" Foreground="White" FontSize="13" CornerRadius="6"/>
-                <TextBlock Text="{Binding SaveStatus}" FontSize="12" Foreground="#10b981"/>
+                <SelectableTextBlock Text="{Binding SaveStatus}" Classes="InfoText" Foreground="#10b981"/>
             </StackPanel>
         </Border>
 
@@ -41,7 +40,7 @@
                     <TextBlock Text="🧠" FontSize="14"/>
                     <TextBlock Text="{DynamicResource settings.model_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
                 </StackPanel>
-                <TextBlock Text="{Binding ModelInfo}" FontSize="12" Foreground="#475569"/>
+                <SelectableTextBlock Text="{Binding ModelInfo}" Classes="InfoText"/>
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBlock Text="{DynamicResource download.repo_label}" FontSize="12" Foreground="#64748b" VerticalAlignment="Center"/>
                     <TextBox Text="{Binding DownloadRepo}" Width="200" Height="30"

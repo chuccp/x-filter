@@ -9,8 +9,7 @@
                 BorderBrush="#e2e8f0" BorderThickness="1">
             <StackPanel Spacing="6">
                 <TextBlock Text="{DynamicResource connect.welcome_title}" FontSize="22" FontWeight="Bold" Foreground="#0f172a"/>
-                <TextBlock Text="{DynamicResource connect.welcome_desc}"
-                           FontSize="13" Foreground="#64748b"/>
+                <TextBlock Text="{DynamicResource connect.welcome_desc}" FontSize="13" Foreground="#64748b"/>
                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                     <Border Background="#3b82f6" CornerRadius="14" Padding="8,4">
                         <TextBlock Text="{DynamicResource connect.step1}" FontSize="11" Foreground="White"/>
@@ -38,8 +37,7 @@
                     <TextBlock Text="⚡" FontSize="16"/>
                     <TextBlock Text="{DynamicResource connect.card_title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
                 </StackPanel>
-                <TextBlock Text="{DynamicResource connect.help}"
-                           FontSize="12" Foreground="#64748b"/>
+                <TextBlock Text="{DynamicResource connect.help}" FontSize="12" Foreground="#64748b"/>
                 <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1">
                     <StackPanel Spacing="4">
                         <StackPanel Orientation="Horizontal" Spacing="4">
@@ -111,7 +109,7 @@
                             IsVisible="{Binding IsConnected}"/>
                 </StackPanel>
 
-                <TextBlock Text="{Binding Status}" FontSize="12"
+                <SelectableTextBlock Text="{Binding Status}" Classes="StatusText"
                            Foreground="{Binding IsConnected, Converter={x:Static conv:AppConverters.ConnectedTextColor}}"/>
             </StackPanel>
         </Border>

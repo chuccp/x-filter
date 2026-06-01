@@ -3,5 +3,6 @@
              x:Class="XFilter.App.App">
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://XFilter.UI/Styles/AppStyles.axaml"/>
     </Application.Styles>
 </Application>
