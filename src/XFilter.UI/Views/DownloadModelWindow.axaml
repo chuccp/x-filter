@@ -1,0 +1,102 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:XFilter.UI.ViewModels"
+        xmlns:conv="clr-namespace:XFilter.UI.Converters"
+        x:Class="XFilter.UI.Views.DownloadModelWindow"
+        Title="{Binding WindowTitle}" Width="520" Height="460"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="#f1f5f9">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24,20">
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+            <TextBlock Text="🧠" FontSize="18"/>
+            <TextBlock Text="{Binding WindowTitle}" FontSize="16" FontWeight="Bold" Foreground="#0f172a" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*">
+            <!-- Repo input (before download starts) -->
+            <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10"
+                        IsVisible="{Binding HasStarted, Converter={x:Static conv:AppConverters.Not}}">
+                <TextBlock Text="{Binding RepoLabel}" FontSize="12" Foreground="#64748b"/>
+                <TextBox Text="{Binding Repo}"
+                         Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"
+                         FontSize="12" Height="32"/>
+            </StackPanel>
+
+            <!-- Overall status + progress -->
+            <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,8"
+                        IsVisible="{Binding HasStarted}">
+                <TextBox Text="{Binding Status}" Foreground="#475569" FontSize="12"
+                         Background="Transparent" BorderThickness="0" IsReadOnly="True"
+                         TextWrapping="Wrap"/>
+                <StackPanel Spacing="4" IsVisible="{Binding IsDownloading}">
+                    <ProgressBar Value="{Binding Percent}" Minimum="0" Maximum="100"
+                                 Height="6" Foreground="#3b82f6" Background="#e2e8f0"/>
+                    <TextBlock Text="{Binding CurrentFile}" Foreground="#94a3b8" FontSize="11"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Initial hint -->
+            <TextBlock Grid.Row="1" Text="{Binding Status}" Foreground="#64748b" FontSize="12"
+                       IsVisible="{Binding HasStarted, Converter={x:Static conv:AppConverters.Not}}"/>
+
+            <!-- File list -->
+            <ScrollViewer Grid.Row="2" IsVisible="{Binding HasStarted}">
+                <ItemsControl ItemsSource="{Binding Files}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:FileItem">
+                            <Border Padding="6,4" Margin="0,1"
+                                    Background="#ffffff" CornerRadius="4"
+                                    BorderBrush="#e2e8f0" BorderThickness="1">
+                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6"
+                                                Margin="0,0,0,2">
+                                        <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="Bold"
+                                                   Foreground="#3b82f6" VerticalAlignment="Center" Width="20"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="11" Foreground="#0f172a"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding SizeDisplay}"
+                                               FontSize="10" Foreground="#94a3b8" VerticalAlignment="Center"
+                                               Margin="8,0,0,0"/>
+                                    <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                                                 Value="{Binding Percent}" Minimum="0" Maximum="100"
+                                                 Height="3" Foreground="#10b981" Background="#e2e8f0"
+                                                 Margin="26,2,0,0"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Error hint -->
+        <TextBlock Grid.Row="2" Text="{Binding ErrorHint}" Foreground="#ef4444" FontSize="12"
+                   IsVisible="{Binding HasError}" Margin="0,8"/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
+                    VerticalAlignment="Bottom">
+            <Button Content="{Binding StartButton}" Command="{Binding StartDownloadCommand}"
+                    IsVisible="{Binding HasStarted, Converter={x:Static conv:AppConverters.Not}}"
+                    Width="90" Height="34"
+                    Background="#3b82f6" Foreground="White" CornerRadius="6"
+                    FontSize="13"/>
+            <Button Content="{Binding CancelButton}" Command="{Binding CancelCommand}"
+                    IsVisible="{Binding IsDownloading}"
+                    Width="80" Height="34"
+                    Background="Transparent" Foreground="#64748b"
+                    BorderBrush="#e2e8f0" BorderThickness="1" CornerRadius="6"
+                    FontSize="13"/>
+            <Button Content="{Binding ConfirmButton}" Command="{Binding ConfirmCommand}"
+                    IsEnabled="{Binding IsComplete}"
+                    Width="100" Height="34"
+                    Background="#10b981" Foreground="White" CornerRadius="6"
+                    FontSize="13"/>
+        </StackPanel>
+    </Grid>
+</Window>

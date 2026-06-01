@@ -1,0 +1,119 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:XFilter.UI.ViewModels"
+             xmlns:conv="clr-namespace:XFilter.UI.Converters"
+             x:Class="XFilter.UI.Views.ConnectView"
+             x:DataType="vm:ConnectViewModel">
+    <StackPanel Spacing="16">
+        <Border Background="#ffffff" CornerRadius="10" Padding="24"
+                BorderBrush="#e2e8f0" BorderThickness="1">
+            <StackPanel Spacing="6">
+                <TextBlock Text="{DynamicResource connect.welcome_title}" FontSize="22" FontWeight="Bold" Foreground="#0f172a"/>
+                <TextBlock Text="{DynamicResource connect.welcome_desc}"
+                           FontSize="13" Foreground="#64748b"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <Border Background="#3b82f6" CornerRadius="14" Padding="8,4">
+                        <TextBlock Text="{DynamicResource connect.step1}" FontSize="11" Foreground="White"/>
+                    </Border>
+                    <TextBlock Text="→" Foreground="#94a3b8" VerticalAlignment="Center"/>
+                    <Border Background="#e2e8f0" CornerRadius="14" Padding="8,4">
+                        <TextBlock Text="{DynamicResource connect.step2}" FontSize="11" Foreground="#475569"/>
+                    </Border>
+                    <TextBlock Text="→" Foreground="#94a3b8" VerticalAlignment="Center"/>
+                    <Border Background="#e2e8f0" CornerRadius="14" Padding="8,4">
+                        <TextBlock Text="{DynamicResource connect.step3}" FontSize="11" Foreground="#475569"/>
+                    </Border>
+                    <TextBlock Text="→" Foreground="#94a3b8" VerticalAlignment="Center"/>
+                    <Border Background="#e2e8f0" CornerRadius="14" Padding="8,4">
+                        <TextBlock Text="{DynamicResource connect.step4}" FontSize="11" Foreground="#475569"/>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Background="#ffffff" CornerRadius="10" Padding="20"
+                BorderBrush="#e2e8f0" BorderThickness="1">
+            <StackPanel Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚡" FontSize="16"/>
+                    <TextBlock Text="{DynamicResource connect.card_title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
+                </StackPanel>
+                <TextBlock Text="{DynamicResource connect.help}"
+                           FontSize="12" Foreground="#64748b"/>
+                <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1">
+                    <StackPanel Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Border Background="#3b82f6" CornerRadius="8" Width="16" Height="16">
+                                <TextBlock Text="1" FontSize="10" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{DynamicResource connect.guide1}" FontSize="11" Foreground="#475569"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Border Background="#3b82f6" CornerRadius="8" Width="16" Height="16">
+                                <TextBlock Text="2" FontSize="10" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <TextBlock Text="{DynamicResource connect.guide2}" FontSize="11" Foreground="#475569"/>
+                                <TextBlock Text="chrome://inspect/#remote-debugging" FontSize="11" Foreground="#3b82f6"/>
+                                <TextBlock Text="{DynamicResource connect.guide2_enter}" FontSize="11" Foreground="#475569"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Border Background="#3b82f6" CornerRadius="8" Width="16" Height="16">
+                                <TextBlock Text="3" FontSize="10" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <TextBlock Text="{DynamicResource connect.guide3}" FontSize="11" Foreground="#475569"/>
+                                <TextBlock Text="{DynamicResource connect.guide3_switch}" FontSize="11" FontWeight="Bold" Foreground="#0f172a"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Border Background="#3b82f6" CornerRadius="8" Width="16" Height="16">
+                                <TextBlock Text="4" FontSize="10" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <TextBlock Text="{DynamicResource connect.guide4}" FontSize="11" Foreground="#475569"/>
+                                <TextBlock Text="127.0.0.1:9222" FontSize="11" Foreground="#3b82f6"/>
+                                <TextBlock Text="{DynamicResource connect.guide4_click}" FontSize="11" Foreground="#475569"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{DynamicResource connect.host_label}" FontSize="12" Foreground="#64748b"/>
+                        <TextBox Text="{Binding Host}" Width="120"
+                                 Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="{DynamicResource connect.port_label}" FontSize="12" Foreground="#64748b"/>
+                        <TextBox Text="{Binding Port}" Width="70"
+                                 Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="{DynamicResource connect.btn_connect}" Command="{Binding ConnectCommand}"
+                            Width="120" Height="36"
+                            Background="#3b82f6" Foreground="White"
+                            FontSize="13" FontWeight="Medium" CornerRadius="6"
+                            IsEnabled="{Binding IsConnecting, Converter={x:Static conv:AppConverters.Not}}"/>
+                    <Button Content="{DynamicResource connect.btn_disconnect}" Command="{Binding DisconnectCommand}"
+                            Width="100" Height="36"
+                            Background="Transparent" Foreground="#64748b"
+                            BorderBrush="#e2e8f0" BorderThickness="1"
+                            FontSize="13" CornerRadius="6"
+                            IsVisible="{Binding IsConnected}"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding Status}" FontSize="12"
+                           Foreground="{Binding IsConnected, Converter={x:Static conv:AppConverters.ConnectedTextColor}}"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

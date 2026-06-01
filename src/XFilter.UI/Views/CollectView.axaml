@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:XFilter.UI.ViewModels"
+             xmlns:conv="clr-namespace:XFilter.UI.Converters"
+             x:Class="XFilter.UI.Views.CollectView"
+             x:DataType="vm:CollectViewModel">
+    <StackPanel Spacing="16">
+        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
+            <StackPanel Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="📥" FontSize="16"/>
+                    <TextBlock Text="{DynamicResource collect.title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
+                </StackPanel>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{DynamicResource collect.url_label}" FontSize="12" Foreground="#64748b"/>
+                    <TextBox Text="{Binding Url}" Watermark="https://x.com/user/status/123"
+                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="{DynamicResource collect.btn_start}" Command="{Binding StartCommand}" Width="120" Height="36"
+                            Background="#3b82f6" Foreground="White" FontSize="13" CornerRadius="6"
+                            IsEnabled="{Binding IsRunning, Converter={x:Static conv:AppConverters.Not}}"/>
+                    <Button Content="{DynamicResource common.cancel}" Command="{Binding CancelCommand}" Width="80" Height="36"
+                            Background="Transparent" Foreground="#64748b" BorderBrush="#e2e8f0"
+                            BorderThickness="1" FontSize="13" CornerRadius="6"
+                            IsVisible="{Binding IsRunning}"/>
+                </StackPanel>
+                <Border Height="6" Background="#e2e8f0" CornerRadius="3" IsVisible="{Binding IsRunning}">
+                    <Border Width="{Binding Progress}" Background="#3b82f6" CornerRadius="3"
+                            HorizontalAlignment="Left" MinWidth="0"/>
+                </Border>
+                <TextBlock Text="{Binding ProgressText}" FontSize="12" Foreground="#64748b"/>
+                <TextBlock Text="{Binding Status}" FontSize="12" Foreground="#0f172a"/>
+            </StackPanel>
+        </Border>
+
+        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="📋" FontSize="14"/>
+                    <TextBlock Text="{DynamicResource collect.history_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding History}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontSize="12" Foreground="#475569" Margin="0,2"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

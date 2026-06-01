@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:XFilter.UI.ViewModels"
+             xmlns:conv="clr-namespace:XFilter.UI.Converters"
+             x:Class="XFilter.UI.Views.DataView"
+             x:DataType="vm:DataViewModel">
+    <StackPanel Spacing="16">
+        <Border Background="#ffffff" CornerRadius="10" Padding="16" BorderBrush="#e2e8f0" BorderThickness="1">
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="📋" FontSize="16"/>
+                    <TextBlock Text="{DynamicResource export.title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
+                    <TextBlock Text="{Binding StatsText}" FontSize="12" Foreground="#64748b" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <Button Content="{DynamicResource common.refresh}" Command="{Binding LoadCommand}" Width="64" Height="28" FontSize="12"
+                            Background="Transparent" Foreground="#3b82f6" CornerRadius="4"
+                            BorderBrush="#e2e8f0" BorderThickness="1" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Button Content="{DynamicResource export.filter_all}" Command="{Binding SetFilterCommand}" CommandParameter="all"
+                            Width="48" Height="28" FontSize="11" CornerRadius="4"
+                            Background="#3b82f6" Foreground="White"/>
+                    <Button Content="{DynamicResource export.filter_spam}" Command="{Binding SetFilterCommand}" CommandParameter="spam"
+                            Width="48" Height="28" FontSize="11" CornerRadius="4"
+                            Background="Transparent" Foreground="#475569" BorderBrush="#e2e8f0" BorderThickness="1"/>
+                    <Button Content="{DynamicResource export.filter_normal}" Command="{Binding SetFilterCommand}" CommandParameter="not-spam"
+                            Width="48" Height="28" FontSize="11" CornerRadius="4"
+                            Background="Transparent" Foreground="#475569" BorderBrush="#e2e8f0" BorderThickness="1"/>
+                    <Button Content="{DynamicResource export.btn_copy}" Command="{Binding CopyCsvCommand}" Width="80" Height="28" FontSize="12"
+                            Background="#10b981" Foreground="White" CornerRadius="4" Margin="12,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Background="#ffffff" CornerRadius="10" BorderBrush="#e2e8f0" BorderThickness="1" MinHeight="300">
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Comments}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="10,8" BorderBrush="#e2e8f0" BorderThickness="0,0,0,1">
+                                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                                            Background="{Binding Label, Converter={x:Static conv:AppConverters.LabelColor}}"
+                                            CornerRadius="4" Padding="4,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Label, Converter={x:Static conv:AppConverters.LabelText}}"
+                                                   FontSize="11" Foreground="White"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Grid.Row="0"
+                                               Text="{Binding Text}" FontSize="13" Foreground="#0f172a"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="500"/>
+                                    <TextBlock Grid.Column="2" Grid.Row="0" Grid.RowSpan="2"
+                                               Text="{Binding Username, StringFormat='@\\{0\\}'}"
+                                               FontSize="11" Foreground="#3b82f6" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Grid.Row="1"
+                                               Text="{Binding PostText}" FontSize="10" Foreground="#94a3b8"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="500"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </StackPanel>
+</UserControl>

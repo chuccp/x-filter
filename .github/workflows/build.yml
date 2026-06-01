@@ -1,0 +1,77 @@
+name: Build and Package
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            runtime: win-x64
+            ext: .exe
+          - os: macos-latest
+            runtime: osx-x64
+          - os: ubuntu-latest
+            runtime: linux-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore XFilter/XFilter.sln
+
+      - name: Build
+        run: dotnet build XFilter/XFilter.sln -c Release --no-restore
+
+      - name: Publish
+        run: >
+          dotnet publish XFilter/src/XFilter.App/XFilter.App.csproj
+          -c Release
+          -r ${{ matrix.runtime }}
+          -o publish/${{ matrix.runtime }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:PublishTrimmed=true
+          -p:EnableCompressionInSingleFile=true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-filter-${{ matrix.runtime }}
+          path: |
+            publish/${{ matrix.runtime }}/XFilter.App${{ matrix.ext }}
+          if-no-files-found: ignore
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

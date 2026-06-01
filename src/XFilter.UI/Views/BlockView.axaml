@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:XFilter.UI.ViewModels"
+             xmlns:conv="clr-namespace:XFilter.UI.Converters"
+             x:Class="XFilter.UI.Views.BlockView"
+             x:DataType="vm:BlockViewModel">
+    <StackPanel Spacing="16">
+        <Border Background="#ffffff" CornerRadius="10" Padding="20"
+                BorderBrush="#e2e8f0" BorderThickness="1">
+            <StackPanel Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="🛡" FontSize="16"/>
+                    <TextBlock Text="{DynamicResource block.title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
+                </StackPanel>
+
+                <Border Background="#f8fafc" CornerRadius="6" Padding="8,6"
+                        BorderBrush="#e2e8f0" BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding ModelInfo}" Foreground="#64748b"
+                                   FontSize="12" VerticalAlignment="Center"/>
+                        <Button Content="{DynamicResource block.btn_download_model}" Width="72" Height="26"
+                                Background="#3b82f6" Foreground="White" FontSize="11" CornerRadius="4"
+                                Command="{Binding DownloadModelCommand}"/>
+                        <Button Content="{DynamicResource block.btn_load_model}" Width="72" Height="26"
+                                Background="#10b981" Foreground="White" FontSize="11" CornerRadius="4"
+                                Command="{Binding LoadModelCommand}"/>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{DynamicResource block.url_label}" FontSize="12" Foreground="#64748b"/>
+                    <TextBox Text="{Binding Url}" Watermark="https://x.com/user/status/123"
+                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{DynamicResource block.threshold_label}" FontSize="12" Foreground="#64748b"/>
+                        <TextBlock Text="{Binding Threshold}" FontSize="12" FontWeight="Bold" Foreground="#0f172a"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto,Auto" Width="300">
+                        <Slider Grid.Column="0" Value="{Binding Threshold}"
+                                Minimum="0.5" Maximum="0.95" TickFrequency="0.05"/>
+                        <TextBlock Grid.Column="1" Text="{DynamicResource block.threshold_loose}" FontSize="10" Foreground="#94a3b8"/>
+                        <TextBlock Grid.Column="2" Text="{DynamicResource block.threshold_strict}" FontSize="10" Foreground="#94a3b8"/>
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="{DynamicResource block.btn_start}" Command="{Binding StartCommand}"
+                            Width="160" Height="36"
+                            Background="#ef4444" Foreground="White"
+                            FontSize="13" FontWeight="Medium" CornerRadius="6"
+                            IsEnabled="{Binding IsRunning, Converter={x:Static conv:AppConverters.Not}}"/>
+                    <Button Content="{DynamicResource common.cancel}" Command="{Binding CancelCommand}"
+                            Width="80" Height="36"
+                            Background="Transparent" Foreground="#64748b"
+                            BorderBrush="#e2e8f0" BorderThickness="1"
+                            FontSize="13" CornerRadius="6"
+                            IsVisible="{Binding IsRunning}"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding Status}" FontSize="12" Foreground="#64748b"/>
+            </StackPanel>
+        </Border>
+
+        <Border Background="#ffffff" CornerRadius="10" Padding="20"
+                BorderBrush="#e2e8f0" BorderThickness="1">
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="📜" FontSize="14"/>
+                    <TextBlock Text="{DynamicResource block.log_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                </StackPanel>
+                <Border Background="#f8fafc" CornerRadius="6" Padding="12"
+                        BorderBrush="#e2e8f0" BorderThickness="1"
+                        MinHeight="200" MaxHeight="350">
+                    <ScrollViewer>
+                        <TextBlock Text="{Binding Log}" Foreground="#475569" FontSize="11"
+                                   FontFamily="Consolas"/>
+                    </ScrollViewer>
+                </Border>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>
