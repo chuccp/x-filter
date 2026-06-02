@@ -6,33 +6,30 @@
         Title="{Binding WindowTitle}" Width="520" Height="460"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
-        Background="#f1f5f9">
+        Background="{StaticResource PageBg}">
     <Grid RowDefinitions="Auto,*,Auto" Margin="24,20">
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
             <TextBlock Text="🧠" FontSize="18"/>
-            <TextBlock Text="{Binding WindowTitle}" FontSize="16" FontWeight="Bold" Foreground="#0f172a" VerticalAlignment="Center"/>
+            <SelectableTextBlock Text="{Binding WindowTitle}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
         </StackPanel>
 
         <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*">
             <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10"
                         IsVisible="{Binding HasStarted, Converter={x:Static conv:AppConverters.Not}}">
-                <TextBlock Text="{Binding RepoLabel}" FontSize="12" Foreground="#64748b"/>
-                <TextBox Text="{Binding Repo}"
-                         Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"
-                         FontSize="12" Height="32"/>
+                <SelectableTextBlock Text="{Binding RepoLabel}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                <TextBox Text="{Binding Repo}" FontSize="12" Height="32"/>
             </StackPanel>
 
             <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,8"
                         IsVisible="{Binding HasStarted}">
-                <TextBox Text="{Binding Status}" Foreground="#475569" FontSize="12"
+                <TextBox Text="{Binding Status}" Foreground="{StaticResource TextSecondary}" FontSize="12"
                          Background="Transparent" BorderThickness="0" IsReadOnly="True"
                          TextWrapping="Wrap"/>
                 <StackPanel Spacing="4" IsVisible="{Binding IsDownloading}">
-                    <!-- Overall progress line -->
                     <ProgressBar Value="{Binding Percent}" Minimum="0" Maximum="100"
-                                 Height="4" Foreground="#3b82f6" Background="#e2e8f0"
+                                 Height="4" Foreground="{StaticResource AccentColor}" Background="{StaticResource BorderColor}"
                                  CornerRadius="2"/>
-                    <SelectableTextBlock Text="{Binding CurrentFile}" Foreground="#94a3b8" FontSize="11"
+                    <SelectableTextBlock Text="{Binding CurrentFile}" Foreground="{StaticResource TextHint}" FontSize="11"
                                TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </StackPanel>
@@ -45,22 +42,22 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:FileItem">
                             <Border Padding="6,4" Margin="0,1"
-                                    Background="#ffffff" CornerRadius="4"
-                                    BorderBrush="#e2e8f0" BorderThickness="1">
+                                    Background="{StaticResource CardBg}" CornerRadius="4"
+                                    BorderBrush="{StaticResource BorderColor}" BorderThickness="1">
                                 <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
                                     <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6"
                                                 Margin="0,0,0,2">
                                         <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="Bold"
-                                                   Foreground="#3b82f6" VerticalAlignment="Center" Width="20"/>
-                                        <SelectableTextBlock Text="{Binding Name}" FontSize="11" Foreground="#0f172a"
+                                                   Foreground="{StaticResource AccentColor}" VerticalAlignment="Center" Width="20"/>
+                                        <SelectableTextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextPrimary}"
                                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
-                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding SizeDisplay}"
-                                               FontSize="10" Foreground="#94a3b8" VerticalAlignment="Center"
+                                    <SelectableTextBlock Grid.Row="0" Grid.Column="2" Text="{Binding SizeDisplay}"
+                                               FontSize="10" Foreground="{StaticResource TextHint}" VerticalAlignment="Center"
                                                Margin="8,0,0,0"/>
                                     <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
                                                  Value="{Binding Percent}" Minimum="0" Maximum="100"
-                                                 Height="4" Foreground="#10b981" Background="Transparent"
+                                                 Height="4" Foreground="{StaticResource SuccessColor}" Background="Transparent"
                                                  Margin="26,2,0,0"/>
                                 </Grid>
                             </Border>
@@ -77,20 +74,13 @@
                     VerticalAlignment="Bottom">
             <Button Content="{Binding StartButton}" Command="{Binding StartDownloadCommand}"
                     IsVisible="{Binding HasStarted, Converter={x:Static conv:AppConverters.Not}}"
-                    Width="90" Height="34"
-                    Background="#3b82f6" Foreground="White" CornerRadius="6"
-                    FontSize="13"/>
+                    Classes="Primary"/>
             <Button Content="{Binding CancelButton}" Command="{Binding CancelCommand}"
                     IsVisible="{Binding IsDownloading}"
-                    Width="80" Height="34"
-                    Background="Transparent" Foreground="#64748b"
-                    BorderBrush="#e2e8f0" BorderThickness="1" CornerRadius="6"
-                    FontSize="13"/>
+                    Classes="Outline"/>
             <Button Content="{Binding ConfirmButton}" Command="{Binding ConfirmCommand}"
                     IsEnabled="{Binding IsComplete}"
-                    Width="100" Height="34"
-                    Background="#10b981" Foreground="White" CornerRadius="6"
-                    FontSize="13"/>
+                    Classes="Success"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -129,6 +129,7 @@ public class ScraperService : IScraperService
             if (articles.Count == 0) break;
 
             var newInThisScroll = 0;
+            var newInBatch = new List<ScrapedComment>();
             foreach (var article in articles)
             {
                 if (_cancelled) break;
@@ -149,6 +150,7 @@ public class ScraperService : IScraperService
 
                 var comment = new ScrapedComment { Text = text, Username = username, PostText = postText ?? "" };
                 comments.Add(comment);
+                newInBatch.Add(comment);
                 onNewComment?.Invoke(comment);
                 newInThisScroll++;
             }
@@ -164,6 +166,7 @@ public class ScraperService : IScraperService
                 Found = comments.Count,
                 Scroll = i + 1,
                 Total = _maxScroll,
+                NewComments = newInBatch.Count > 0 ? newInBatch.ToList() : null,
             });
 
             // Scroll down

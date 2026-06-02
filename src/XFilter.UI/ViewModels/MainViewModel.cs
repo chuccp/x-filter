@@ -136,6 +136,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         CurrentView = vm;
+        vm.OnActivated();
     }
 
     [RelayCommand]

@@ -5,52 +5,47 @@
              x:Class="XFilter.UI.Views.BlocklistView"
              x:DataType="vm:BlocklistViewModel">
     <StackPanel Spacing="16">
-        <Border Background="#ffffff" CornerRadius="10" Padding="16" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
                 <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
                     <TextBlock Text="📋" FontSize="16"/>
-                    <TextBlock Text="{DynamicResource blocklist.title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
-                    <TextBlock FontSize="12" Foreground="#64748b" VerticalAlignment="Center" Margin="8,0,0,0"
+                    <SelectableTextBlock Text="{DynamicResource blocklist.title}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
+                    <SelectableTextBlock FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="8,0,0,0"
                                Text="{Binding CountText}"/>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="4">
-                    <TextBox Text="{Binding AddInput}" Watermark="{DynamicResource blocklist.modal_add_placeholder}" Width="140" Height="32"
-                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"/>
-                    <Button Content="{DynamicResource blocklist.btn_add}" Command="{Binding AddCommand}" Width="48" Height="32"
-                            Background="#3b82f6" Foreground="White" FontSize="12" CornerRadius="4"/>
+                    <TextBox Text="{Binding AddInput}" Watermark="{DynamicResource blocklist.modal_add_placeholder}" Width="140"/>
+                    <Button Content="{DynamicResource blocklist.btn_add}" Command="{Binding AddCommand}"
+                            Classes="Small Primary"/>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="12,0">
-                    <Button Content="{DynamicResource blocklist.btn_import}" Command="{Binding ImportCommand}" Width="72" Height="32"
-                            Background="Transparent" Foreground="#475569" FontSize="11" CornerRadius="4"
-                            BorderBrush="#e2e8f0" BorderThickness="1"/>
-                    <Button Content="{DynamicResource blocklist.btn_clear}" Command="{Binding ClearCommand}" Width="48" Height="32"
-                            Background="Transparent" Foreground="#ef4444" FontSize="11" CornerRadius="4"
-                            BorderBrush="#e2e8f0" BorderThickness="1"/>
-                    <TextBox Text="{Binding ImportText}" Watermark="{DynamicResource blocklist.modal_import_placeholder}" Width="140" Height="32"
-                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0" FontSize="11"/>
+                    <Button Content="{DynamicResource blocklist.btn_import}" Command="{Binding ImportCommand}"
+                            Classes="Small Outline"/>
+                    <Button Content="{DynamicResource blocklist.btn_clear}" Command="{Binding ClearCommand}"
+                            Classes="Small Danger"/>
+                    <TextBox Text="{Binding ImportText}" Watermark="{DynamicResource blocklist.modal_import_placeholder}" Width="140" FontSize="11"/>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                    <TextBox Text="{Binding BlockUrl}" Watermark="{DynamicResource blocklist.modal_block_url_placeholder}" Width="180" Height="32"
-                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0" FontSize="11"/>
-                    <Button Content="{DynamicResource blocklist.btn_block}" Command="{Binding StartBlockCommand}" Width="72" Height="32"
-                            Background="#ef4444" Foreground="White" FontSize="11" CornerRadius="4"
+                    <TextBox Text="{Binding BlockUrl}" Watermark="{DynamicResource blocklist.modal_block_url_placeholder}" Width="180" FontSize="11"/>
+                    <Button Content="{DynamicResource blocklist.btn_block}" Command="{Binding StartBlockCommand}"
+                            Classes="Small Danger"
                             IsEnabled="{Binding IsRunning, Converter={x:Static conv:AppConverters.Not}}"/>
-                    <Button Content="{DynamicResource common.cancel}" Command="{Binding CancelBlockCommand}" Width="48" Height="32"
-                            Background="Transparent" Foreground="#64748b" FontSize="11" CornerRadius="4"
-                            IsVisible="{Binding IsRunning}" BorderBrush="#e2e8f0" BorderThickness="1"/>
+                    <Button Content="{DynamicResource common.cancel}" Command="{Binding CancelBlockCommand}"
+                            Classes="Small Outline"
+                            IsVisible="{Binding IsRunning}"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Border Background="#ffffff" CornerRadius="10" BorderBrush="#e2e8f0" BorderThickness="1" MinHeight="200">
+        <Border Background="{StaticResource CardBg}" CornerRadius="10" BorderBrush="{StaticResource BorderColor}" BorderThickness="1" MinHeight="200">
             <ScrollViewer>
                 <ItemsControl ItemsSource="{Binding Entries}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Padding="10,6" BorderBrush="#e2e8f0" BorderThickness="0,0,0,1">
+                            <Border Padding="10,6" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,0,0,1">
                                 <Grid ColumnDefinitions="*,Auto,Auto">
                                     <SelectableTextBlock Grid.Column="0" Text="{Binding Username}"
-                                               FontSize="13" Foreground="#0f172a" VerticalAlignment="Center"/>
+                                               FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
                                     <Border Grid.Column="1" CornerRadius="4" Padding="4,1" Margin="0,0,6,0"
                                             Background="{Binding IsBlocked, Converter={x:Static conv:AppConverters.BlockedBadge}}">
                                         <TextBlock Text="{Binding IsBlocked, Converter={x:Static conv:AppConverters.BlockedText}}"
@@ -65,7 +60,7 @@
         </Border>
 
         <SelectableTextBlock Text="{Binding Status}" Classes="StatusText"/>
-        <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1"
+        <Border Background="{StaticResource SurfaceBg}" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
                 MaxHeight="150" IsVisible="{Binding IsRunning}">
             <ScrollViewer>
                 <SelectableTextBlock Text="{Binding Log}" Classes="LogText" TextWrapping="Wrap"/>

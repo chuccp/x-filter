@@ -4,53 +4,49 @@
              x:Class="XFilter.UI.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
     <StackPanel Spacing="16">
-        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <StackPanel Spacing="12">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Classes="SectionTitle">
                     <TextBlock Text="⚙" FontSize="16"/>
-                    <TextBlock Text="{DynamicResource settings.title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
+                    <SelectableTextBlock Text="{DynamicResource settings.title}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                 </StackPanel>
                 <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource settings.scroll_label}" FontSize="12" Foreground="#64748b"/>
-                    <TextBox Text="{Binding MaxScroll}" Width="120"
-                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                    <SelectableTextBlock Text="{DynamicResource settings.scroll_label}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                    <TextBox Text="{Binding MaxScroll}" Width="120"/>
                 </StackPanel>
                 <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource settings.scroll_delay_label}" FontSize="12" Foreground="#64748b"/>
-                    <TextBox Text="{Binding ScrollDelay}" Width="120"
-                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                    <SelectableTextBlock Text="{DynamicResource settings.scroll_delay_label}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                    <TextBox Text="{Binding ScrollDelay}" Width="120"/>
                 </StackPanel>
                 <StackPanel Spacing="4">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="{DynamicResource settings.threshold_label}" FontSize="12" Foreground="#64748b"/>
-                        <TextBlock Text="{Binding SpamThreshold}" FontSize="12" FontWeight="Bold" Foreground="#0f172a"/>
+                        <SelectableTextBlock Text="{DynamicResource settings.threshold_label}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                        <SelectableTextBlock Text="{Binding SpamThreshold}" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                     </StackPanel>
                     <Slider Value="{Binding SpamThreshold}" Minimum="0.5" Maximum="0.95"
                             TickFrequency="0.05" Width="250"/>
                 </StackPanel>
-                <Button Content="{DynamicResource settings.btn_save}" Command="{Binding SaveCommand}" Width="100" Height="34"
-                        Background="#3b82f6" Foreground="White" FontSize="13" CornerRadius="6"/>
-                <SelectableTextBlock Text="{Binding SaveStatus}" Classes="InfoText" Foreground="#10b981"/>
+                <Button Content="{DynamicResource settings.btn_save}" Command="{Binding SaveCommand}" Classes="Primary"/>
+                <SelectableTextBlock Text="{Binding SaveStatus}" Classes="InfoText" Foreground="{StaticResource SuccessColor}"/>
             </StackPanel>
         </Border>
 
-        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Classes="SectionTitle">
                     <TextBlock Text="🧠" FontSize="14"/>
-                    <TextBlock Text="{DynamicResource settings.model_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                    <SelectableTextBlock Text="{DynamicResource settings.model_title}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                 </StackPanel>
                 <SelectableTextBlock Text="{Binding ModelInfo}" Classes="InfoText"/>
                 <StackPanel Orientation="Horizontal" Spacing="4">
-                    <TextBlock Text="{DynamicResource download.repo_label}" FontSize="12" Foreground="#64748b" VerticalAlignment="Center"/>
-                    <TextBox Text="{Binding DownloadRepo}" Width="200" Height="30"
-                             Background="#f8fafc" Foreground="#0f172a" BorderBrush="#e2e8f0" FontSize="12"/>
+                    <SelectableTextBlock Text="{DynamicResource download.repo_label}" FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                    <TextBox Text="{Binding DownloadRepo}" Width="200" FontSize="12"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="{DynamicResource settings.btn_download_model}" Command="{Binding DownloadModelCommand}" Width="80" Height="30"
-                            Background="#3b82f6" Foreground="White" FontSize="12" CornerRadius="4"/>
-                    <Button Content="{DynamicResource settings.btn_load_model}" Command="{Binding LoadModelCommand}" Width="80" Height="30"
-                            Background="#10b981" Foreground="White" FontSize="12" CornerRadius="4"/>
+                    <Button Content="{DynamicResource settings.btn_download_model}" Command="{Binding DownloadModelCommand}"
+                            Classes="Small Primary"/>
+                    <Button Content="{DynamicResource settings.btn_load_model}" Command="{Binding LoadModelCommand}"
+                            Classes="Small Success"/>
                 </StackPanel>
             </StackPanel>
         </Border>

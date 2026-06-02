@@ -8,6 +8,7 @@
         Title="x-filter — X Spam Filter"
         Width="940" Height="720"
         MinWidth="840" MinHeight="600"
+        Focusable="True"
         Background="{StaticResource PageBg}">
     <Design.DataContext>
         <vm:MainViewModel/>
@@ -27,9 +28,9 @@
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel>
-                            <TextBlock Text="x-filter" FontSize="16" FontWeight="Bold"
+                            <SelectableTextBlock Text="x-filter" FontSize="16" FontWeight="Bold"
                                        Foreground="{StaticResource TextPrimary}"/>
-                            <TextBlock Text="{DynamicResource app.subtitle}" FontSize="11"
+                            <SelectableTextBlock Text="{DynamicResource app.subtitle}" FontSize="11"
                                        Foreground="{StaticResource TextHint}"/>
                         </StackPanel>
                     </StackPanel>

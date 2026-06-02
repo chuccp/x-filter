@@ -5,62 +5,60 @@
              x:Class="XFilter.UI.Views.LabelView"
              x:DataType="vm:LabelViewModel">
     <StackPanel Spacing="16">
-        <Border Background="#ffffff" CornerRadius="10" Padding="16" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Classes="SectionTitle">
                     <TextBlock Text="🏷" FontSize="16"/>
-                    <TextBlock Text="{DynamicResource label.title}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
+                    <SelectableTextBlock Text="{DynamicResource label.title}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <Button Content="{DynamicResource label.filter_unlabeled}" Command="{Binding SetFilterCommand}" CommandParameter="unlabeled"
-                            Width="64" Height="28" FontSize="11" CornerRadius="4"
-                            Background="#3b82f6" Foreground="White"/>
+                            Classes="Small Primary"/>
                     <Button Content="{DynamicResource label.filter_all}" Command="{Binding SetFilterCommand}" CommandParameter="all"
-                            Width="48" Height="28" FontSize="11" CornerRadius="4"
-                            Background="Transparent" Foreground="#475569" BorderBrush="#e2e8f0" BorderThickness="1"/>
+                            Classes="Small Outline"/>
                     <Button Content="{DynamicResource label.filter_spam}" Command="{Binding SetFilterCommand}" CommandParameter="spam"
-                            Width="48" Height="28" FontSize="11" CornerRadius="4"
-                            Background="Transparent" Foreground="#475569" BorderBrush="#e2e8f0" BorderThickness="1"/>
+                            Classes="Small Outline"/>
                     <Button Content="{DynamicResource label.filter_normal}" Command="{Binding SetFilterCommand}" CommandParameter="not-spam"
-                            Width="48" Height="28" FontSize="11" CornerRadius="4"
-                            Background="Transparent" Foreground="#475569" BorderBrush="#e2e8f0" BorderThickness="1"/>
+                            Classes="Small Outline"/>
                 </StackPanel>
-                <SelectableTextBlock Text="{Binding StatsText}" FontSize="11" Foreground="#64748b"/>
+                <SelectableTextBlock Text="{Binding StatsText}" FontSize="11" Foreground="{StaticResource TextMuted}"/>
             </StackPanel>
         </Border>
 
-        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1"
-                IsVisible="{Binding HasComments}">
+        <Border Classes="Card" IsVisible="{Binding HasComments}">
             <StackPanel Spacing="12">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{Binding IndexText}" FontSize="12" Foreground="#64748b"/>
-                    <TextBlock Text="{Binding CommentUser}" FontSize="13" FontWeight="Bold" Foreground="#0f172a"/>
+                    <SelectableTextBlock Text="{Binding IndexText}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                    <SelectableTextBlock Text="{Binding CommentUser}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                 </StackPanel>
-                <SelectableTextBlock Text="{Binding PostText}" FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
-                <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1">
-                    <SelectableTextBlock Text="{Binding CommentText}" FontSize="14" Foreground="#0f172a" TextWrapping="Wrap"/>
+                <SelectableTextBlock Text="{Binding PostText}" FontSize="11" Foreground="{StaticResource TextHint}" TextWrapping="Wrap"/>
+                <Border Background="{StaticResource SurfaceBg}" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderColor}" BorderThickness="1">
+                    <SelectableTextBlock Text="{Binding CommentText}" FontSize="14" Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap"/>
                 </Border>
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="{DynamicResource label.btn_spam}" Command="{Binding SpamCommand}" Width="100" Height="36"
-                            Background="#ef4444" Foreground="White" FontSize="13" CornerRadius="6"/>
-                    <Button Content="{DynamicResource label.btn_not_spam}" Command="{Binding NotSpamCommand}" Width="100" Height="36"
-                            Background="#10b981" Foreground="White" FontSize="13" CornerRadius="6"/>
-                    <Button Content="{DynamicResource label.btn_delete}" Command="{Binding DeleteCommand}" Width="60" Height="36"
-                            Background="Transparent" Foreground="#ef4444" BorderBrush="#e2e8f0"
-                            BorderThickness="1" FontSize="13" CornerRadius="6"/>
+                    <Button Content="{DynamicResource label.btn_prev}" Command="{Binding PrevCommand}"
+                            Classes="Outline" Width="100"/>
+                    <Button Content="{DynamicResource label.btn_skip}" Command="{Binding NextCommand}"
+                            Classes="Primary" Width="100"/>
+                    <Button Content="{DynamicResource label.btn_spam}" Command="{Binding SpamCommand}"
+                            Classes="Danger" Width="90"/>
+                    <Button Content="{DynamicResource label.btn_not_spam}" Command="{Binding NotSpamCommand}"
+                            Classes="Success" Width="90"/>
+                    <Button Content="{DynamicResource label.btn_delete}" Command="{Binding DeleteCommand}"
+                            Classes="Outline" Width="60"/>
                 </StackPanel>
-                <TextBlock Text="{DynamicResource label.shortcuts}" FontSize="10" Foreground="#94a3b8"/>
+                <SelectableTextBlock Text="{DynamicResource label.shortcuts}" FontSize="10" Foreground="{StaticResource TextHint}"/>
             </StackPanel>
         </Border>
 
-        <Border Background="#ffffff" CornerRadius="10" Padding="16" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Text="⚡" FontSize="14" VerticalAlignment="Center"/>
-                <TextBlock Text="{DynamicResource label.batch_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <Button Content="{DynamicResource label.batch_all_spam}" Command="{Binding BatchSpamCommand}" Width="110" Height="32"
-                        Background="#ef4444" Foreground="White" FontSize="12" CornerRadius="4"/>
-                <Button Content="{DynamicResource label.batch_all_not_spam}" Command="{Binding BatchNotSpamCommand}" Width="110" Height="32"
-                        Background="#10b981" Foreground="White" FontSize="12" CornerRadius="4"/>
+                <SelectableTextBlock Text="{DynamicResource label.batch_title}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <Button Content="{DynamicResource label.batch_all_spam}" Command="{Binding BatchSpamCommand}"
+                        Classes="Small Danger" Width="120"/>
+                <Button Content="{DynamicResource label.batch_all_not_spam}" Command="{Binding BatchNotSpamCommand}"
+                        Classes="Small Success" Width="120"/>
             </StackPanel>
         </Border>
     </StackPanel>

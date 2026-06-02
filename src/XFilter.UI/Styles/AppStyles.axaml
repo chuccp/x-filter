@@ -15,12 +15,123 @@
             <SolidColorBrush x:Key="TextHint" Color="#94a3b8"/>
             <SolidColorBrush x:Key="AccentColor" Color="#3b82f6"/>
             <SolidColorBrush x:Key="AccentLight" Color="#dbeafe"/>
+            <SolidColorBrush x:Key="AccentHover" Color="#2563eb"/>
             <SolidColorBrush x:Key="SuccessColor" Color="#10b981"/>
+            <SolidColorBrush x:Key="SuccessHover" Color="#059669"/>
             <SolidColorBrush x:Key="DangerColor" Color="#ef4444"/>
+            <SolidColorBrush x:Key="DangerHover" Color="#dc2626"/>
         </Style.Resources>
     </Style>
 
-    <!-- SelectableTextBlock — match TextBlock look but allow copy -->
+    <!-- ── Global button baseline ── -->
+    <Style Selector="Button">
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <!-- Primary action button -->
+    <Style Selector="Button.Primary">
+        <Setter Property="Background" Value="#3b82f6"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Padding" Value="16,0"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="Button.Primary:pointerover">
+        <Setter Property="Background" Value="#2563eb"/>
+    </Style>
+    <Style Selector="Button.Primary:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- Danger action button -->
+    <Style Selector="Button.Danger">
+        <Setter Property="Background" Value="#ef4444"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Padding" Value="16,0"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="Button.Danger:pointerover">
+        <Setter Property="Background" Value="#dc2626"/>
+    </Style>
+    <Style Selector="Button.Danger:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- Success action button -->
+    <Style Selector="Button.Success">
+        <Setter Property="Background" Value="#10b981"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Padding" Value="16,0"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="Button.Success:pointerover">
+        <Setter Property="Background" Value="#059669"/>
+    </Style>
+
+    <!-- Outline / ghost button -->
+    <Style Selector="Button.Outline">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#64748b"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Padding" Value="12,0"/>
+        <Setter Property="BorderBrush" Value="#e2e8f0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.Outline:pointerover">
+        <Setter Property="Background" Value="#f1f5f9"/>
+    </Style>
+
+    <!-- Small primary filter / utility button -->
+    <Style Selector="Button.Small">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="10,0"/>
+    </Style>
+    <Style Selector="Button.Small.Primary">
+        <Setter Property="Background" Value="#3b82f6"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Button.Small.Primary:pointerover">
+        <Setter Property="Background" Value="#2563eb"/>
+    </Style>
+    <Style Selector="Button.Small.Outline">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#475569"/>
+        <Setter Property="BorderBrush" Value="#e2e8f0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="Button.Small.Outline:pointerover">
+        <Setter Property="Background" Value="#f1f5f9"/>
+    </Style>
+    <Style Selector="Button.Small.Danger">
+        <Setter Property="Background" Value="#ef4444"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Button.Small.Danger:pointerover">
+        <Setter Property="Background" Value="#dc2626"/>
+    </Style>
+    <Style Selector="Button.Small.Success">
+        <Setter Property="Background" Value="#10b981"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Button.Small.Success:pointerover">
+        <Setter Property="Background" Value="#059669"/>
+    </Style>
+    <Style Selector="Button.Small:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- ── SelectableTextBlock ── -->
     <Style Selector="SelectableTextBlock">
         <Setter Property="SelectionBrush" Value="#93c5fd"/>
         <Setter Property="SelectionForegroundBrush" Value="#0f172a"/>
@@ -43,12 +154,13 @@
         <Setter Property="Foreground" Value="#ef4444"/>
     </Style>
 
-    <!-- Sidebar navigation buttons -->
+    <!-- ── Sidebar navigation buttons ── -->
     <Style Selector="Button.NavBtn">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Height" Value="38"/>
         <Setter Property="Padding" Value="10,6"/>
         <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
     </Style>
     <Style Selector="Button.NavBtn:pointerover">
         <Setter Property="Background" Value="#f1f5f9"/>
@@ -58,6 +170,33 @@
     </Style>
     <Style Selector="Button.NavBtn.Active TextBlock">
         <Setter Property="Foreground" Value="#3b82f6"/>
+    </Style>
+
+    <!-- ── Card style ── -->
+    <Style Selector="Border.Card">
+        <Setter Property="Background" Value="#ffffff"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="20"/>
+        <Setter Property="BorderBrush" Value="#e2e8f0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <!-- ── Section title row (icon + heading) ── -->
+    <Style Selector="StackPanel.SectionTitle">
+        <Setter Property="Orientation" Value="Horizontal"/>
+        <Setter Property="Spacing" Value="8"/>
+    </Style>
+
+    <!-- ── TextBox ── -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="#f8fafc"/>
+        <Setter Property="Foreground" Value="#0f172a"/>
+        <Setter Property="BorderBrush" Value="#e2e8f0"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+    <Style Selector="TextBox:focus">
+        <Setter Property="BorderBrush" Value="#3b82f6"/>
     </Style>
 
 </Styles>

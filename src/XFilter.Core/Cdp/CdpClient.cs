@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using XFilter.Core.Models;
 
 namespace XFilter.Core.Cdp;
@@ -129,9 +130,14 @@ public class CdpClient : ICdpClient, IDisposable
                         var msg = error.GetProperty("message").GetString() ?? "CDP error";
                         tcs.TrySetException(new CdpException(msg));
                     }
+                    else if (root.TryGetProperty("result", out var result))
+                    {
+                        tcs.TrySetResult(result.Clone());
+                    }
                     else
                     {
-                        tcs.TrySetResult(root.GetProperty("result").Clone());
+                        // Response with id but no result/error — treat as success with empty result
+                        tcs.TrySetResult(default);
                     }
                 }
             }
@@ -146,11 +152,13 @@ public class CdpClient : ICdpClient, IDisposable
             throw new CdpException("Not connected to Chrome");
 
         var id = Interlocked.Increment(ref _commandId);
-        var msg = new Dictionary<string, object> { ["id"] = id, ["method"] = method };
-        if (parameters != null) msg["params"] = parameters;
+
+        // Build JSON via JsonObject to avoid reflection-based JsonSerializer (disabled in .NET 9 trimmed apps)
+        var msg = new JsonObject { ["id"] = id, ["method"] = method };
+        if (parameters != null) msg["params"] = ToJsonNode(parameters);
         if (sessionId != null) msg["sessionId"] = sessionId;
 
-        var json = JsonSerializer.Serialize(msg);
+        var json = msg.ToJsonString();
         var bytes = Encoding.UTF8.GetBytes(json);
         var tcs = new TaskCompletionSource<JsonElement>();
         _pending[id] = tcs;
@@ -173,6 +181,36 @@ public class CdpClient : ICdpClient, IDisposable
             _pending.TryRemove(id, out _);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Convert an anonymous-type parameters object to a JsonNode using runtime reflection.
+    /// This avoids System.Text.Json's reflection-based serializer which is disabled in .NET 9 trimmed apps.
+    /// </summary>
+    private static JsonNode? ToJsonNode(object? value)
+    {
+        if (value == null) return null;
+        if (value is JsonNode jn) return jn;
+        if (value is JsonElement je) return JsonNode.Parse(je.GetRawText());
+
+        var type = value.GetType();
+        // Handle primitives directly
+        if (value is string s) return JsonValue.Create(s);
+        if (value is bool b) return JsonValue.Create(b);
+        if (value is int i) return JsonValue.Create(i);
+        if (value is long l) return JsonValue.Create(l);
+        if (value is double d) return JsonValue.Create(d);
+        if (value is float f) return JsonValue.Create(f);
+
+        // Anonymous types / POCOs: enumerate properties via CLR reflection
+        var obj = new JsonObject();
+        foreach (var prop in type.GetProperties())
+        {
+            if (!prop.CanRead) continue;
+            var propValue = prop.GetValue(value);
+            obj[prop.Name] = ToJsonNode(propValue);
+        }
+        return obj;
     }
 
     // ── Convenience methods ────────────────────────────────────
@@ -274,7 +312,12 @@ public class CdpClient : ICdpClient, IDisposable
         if (result.TryGetProperty("exceptionDetails", out var ex))
             throw new CdpException($"Eval error: {ex}");
 
-        return result.GetProperty("result").GetProperty("value");
+        if (result.TryGetProperty("result", out var evalResult) &&
+            evalResult.TryGetProperty("value", out var value))
+            return value;
+
+        // Expression returned no value (e.g. void call or undefined)
+        return default;
     }
 
     public async Task<JsonElement> ClickElementAsync(string sessionId, string selector, CancellationToken ct = default)

@@ -14,4 +14,10 @@ public partial class ViewModelBase : ObservableObject
     {
         return I18n?.T(key, param) ?? key;
     }
+
+    /// <summary>
+    /// Called each time the view is navigated to (even if cached).
+    /// Override to refresh data.
+    /// </summary>
+    public virtual void OnActivated() { }
 }

@@ -5,20 +5,20 @@
              x:Class="XFilter.UI.Views.TrainView"
              x:DataType="vm:TrainViewModel">
     <StackPanel Spacing="16">
-        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Classes="SectionTitle">
                     <TextBlock Text="🧠" FontSize="16"/>
-                    <TextBlock Text="{DynamicResource nav.train}" FontSize="16" FontWeight="Bold" Foreground="#0f172a"/>
+                    <SelectableTextBlock Text="{DynamicResource nav.train}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                 </StackPanel>
-                <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1">
+                <Border Background="{StaticResource SurfaceBg}" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderColor}" BorderThickness="1">
                     <StackPanel Spacing="4">
                         <SelectableTextBlock Text="{Binding EnvInfo}" Classes="InfoText"/>
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                            <Button Content="{DynamicResource train.env_btn_recheck}" Command="{Binding CheckEnvCommand}" Width="80" Height="28"
-                                    Background="#3b82f6" Foreground="White" FontSize="11" CornerRadius="4"/>
-                            <Button Content="{DynamicResource train.btn_install_deps}" Command="{Binding InstallDepsCommand}" Width="80" Height="28"
-                                    Background="#10b981" Foreground="White" FontSize="11" CornerRadius="4"
+                            <Button Content="{DynamicResource train.env_btn_recheck}" Command="{Binding CheckEnvCommand}"
+                                    Classes="Small Primary"/>
+                            <Button Content="{DynamicResource train.btn_install_deps}" Command="{Binding InstallDepsCommand}"
+                                    Classes="Small Success"
                                     IsEnabled="{Binding EnvReady}"/>
                         </StackPanel>
                     </StackPanel>
@@ -26,43 +26,40 @@
             </StackPanel>
         </Border>
 
-        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Classes="SectionTitle">
                     <TextBlock Text="⚡" FontSize="14"/>
-                    <TextBlock Text="{DynamicResource train.training_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                    <SelectableTextBlock Text="{DynamicResource train.training_title}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="16">
                     <StackPanel Spacing="4">
-                        <TextBlock Text="{DynamicResource train.epochs_label}" FontSize="12" Foreground="#64748b"/>
-                        <TextBox Text="{Binding Epochs}" Width="80" Background="#f8fafc"
-                                 Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                        <SelectableTextBlock Text="{DynamicResource train.epochs_label}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                        <TextBox Text="{Binding Epochs}" Width="80"/>
                     </StackPanel>
                     <StackPanel Spacing="4">
-                        <TextBlock Text="{DynamicResource train.batch_size_label}" FontSize="12" Foreground="#64748b"/>
-                        <TextBox Text="{Binding BatchSize}" Width="80" Background="#f8fafc"
-                                 Foreground="#0f172a" BorderBrush="#e2e8f0"/>
+                        <SelectableTextBlock Text="{DynamicResource train.batch_size_label}" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                        <TextBox Text="{Binding BatchSize}" Width="80"/>
                     </StackPanel>
-                    <Button Content="{DynamicResource train.btn_train}" Command="{Binding StartTrainingCommand}" Width="100" Height="36"
-                            Background="#ef4444" Foreground="White" FontSize="13" CornerRadius="6"
-                            IsEnabled="{Binding IsTraining, Converter={x:Static conv:AppConverters.Not}}" VerticalAlignment="Bottom"/>
-                    <Button Content="{DynamicResource common.cancel}" Command="{Binding CancelTrainingCommand}" Width="60" Height="36"
-                            Background="Transparent" Foreground="#64748b" BorderBrush="#e2e8f0"
-                            BorderThickness="1" FontSize="13" CornerRadius="6"
-                            IsVisible="{Binding IsTraining}" VerticalAlignment="Bottom"/>
+                    <Button Content="{DynamicResource train.btn_train}" Command="{Binding StartTrainingCommand}"
+                            Classes="Danger" Width="110" VerticalAlignment="Bottom"
+                            IsEnabled="{Binding IsTraining, Converter={x:Static conv:AppConverters.Not}}"/>
+                    <Button Content="{DynamicResource common.cancel}" Command="{Binding CancelTrainingCommand}"
+                            Classes="Outline" VerticalAlignment="Bottom"
+                            IsVisible="{Binding IsTraining}"/>
                 </StackPanel>
-                <SelectableTextBlock Text="{Binding EpochProgress}" Classes="InfoText" Foreground="#3b82f6"/>
-                <SelectableTextBlock Text="{Binding TrainedModelInfo}" Classes="InfoText" Foreground="#10b981"/>
+                <SelectableTextBlock Text="{Binding EpochProgress}" Classes="InfoText" Foreground="{StaticResource AccentColor}"/>
+                <SelectableTextBlock Text="{Binding TrainedModelInfo}" Classes="InfoText" Foreground="{StaticResource SuccessColor}"/>
             </StackPanel>
         </Border>
 
-        <Border Background="#ffffff" CornerRadius="10" Padding="20" BorderBrush="#e2e8f0" BorderThickness="1">
+        <Border Classes="Card">
             <StackPanel Spacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Classes="SectionTitle">
                     <TextBlock Text="📜" FontSize="14"/>
-                    <TextBlock Text="{DynamicResource train.log_title}" FontSize="14" FontWeight="Bold" Foreground="#0f172a"/>
+                    <SelectableTextBlock Text="{DynamicResource train.log_title}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimary}"/>
                 </StackPanel>
-                <Border Background="#f8fafc" CornerRadius="6" Padding="12" BorderBrush="#e2e8f0" BorderThickness="1"
+                <Border Background="{StaticResource SurfaceBg}" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
                         MinHeight="200" MaxHeight="300">
                     <ScrollViewer>
                         <SelectableTextBlock Text="{Binding Log}" Classes="LogText" TextWrapping="Wrap"/>

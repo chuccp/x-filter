@@ -22,6 +22,8 @@ public partial class LabelViewModel : ViewModelBase
 
     public LabelViewModel(IDatabaseService db) { _db = db; Load(); }
 
+    public override void OnActivated() => Load();
+
     private void Load()
     {
         _comments = _db.GetAllComments(Filter, 200, 0);
@@ -90,6 +92,13 @@ public partial class LabelViewModel : ViewModelBase
 
     public void OnKeyDown(string key)
     {
-        switch (key) { case "S": Spam(); break; case "N": NotSpam(); break; case "Delete": Delete(); break; }
+        switch (key)
+        {
+            case "S": Spam(); break;
+            case "N": NotSpam(); break;
+            case "Delete": Delete(); break;
+            case "Right": case "RightArrow": Next(); break;
+            case "Left": case "LeftArrow": Prev(); break;
+        }
     }
 }

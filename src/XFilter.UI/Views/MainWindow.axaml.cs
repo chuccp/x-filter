@@ -28,4 +28,20 @@ public partial class MainWindow : Window
                 vm.OnLanguageChanged(item.Tag);
         }
     }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (DataContext is MainViewModel vm && vm.CurrentView is LabelViewModel labelVm)
+        {
+            var key = e.Key switch
+            {
+                Key.Right => "Right",
+                Key.Left => "Left",
+                _ => e.Key.ToString()
+            };
+            labelVm.OnKeyDown(key);
+            e.Handled = true;
+        }
+    }
 }

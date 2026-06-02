@@ -39,6 +39,16 @@ public static class AppConverters
                  : l == 0 ? (i18n?.T("export.tag_normal") ?? "Normal")
                  : "?";
         });
+    public static readonly IValueConverter LabelBadge =
+        new FuncValueConverter<int?, string>(l =>
+        {
+            var i18n = ViewModelBase.I18n;
+            return l == 1 ? $"🗑 {i18n?.T("export.tag_spam") ?? "Spam"}"
+                 : l == 0 ? $"✅ {i18n?.T("export.tag_normal") ?? "Normal"}"
+                 : "?";
+        });
+    public static readonly IValueConverter NotEmpty =
+        new FuncValueConverter<object?, bool>(s => s is string str && !string.IsNullOrEmpty(str));
 
     // Blocked
     public static readonly IValueConverter BlockedBadge =

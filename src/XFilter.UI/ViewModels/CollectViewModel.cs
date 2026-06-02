@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XFilter.Core.Cdp;
+using XFilter.Core.Data;
 using XFilter.Core.Services;
 
 namespace XFilter.UI.ViewModels;
@@ -10,19 +11,22 @@ public partial class CollectViewModel : ViewModelBase
 {
     private readonly IScraperService _scraper;
     private readonly ICdpClient _cdp;
+    private readonly IDatabaseService _db;
 
     [ObservableProperty] private string _url = "";
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private int _progress;
     [ObservableProperty] private string _progressText = "";
+    [ObservableProperty] private string _liveComment = "";
 
     public ObservableCollection<string> History { get; } = new();
 
-    public CollectViewModel(IScraperService scraper, ICdpClient cdp)
+    public CollectViewModel(IScraperService scraper, ICdpClient cdp, IDatabaseService db)
     {
         _scraper = scraper;
         _cdp = cdp;
+        _db = db;
         _scraper.ProgressChanged += (_, p) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
@@ -33,6 +37,12 @@ public partial class CollectViewModel : ViewModelBase
                     ["total"] = p.Total.ToString(),
                     ["found"] = p.Found.ToString()
                 });
+                // Show the latest comment in real-time
+                if (p.NewComments is { Count: > 0 })
+                {
+                    var last = p.NewComments[^1];
+                    LiveComment = $"@{last.Username}: {last.Text}";
+                }
             });
     }
 
@@ -46,8 +56,9 @@ public partial class CollectViewModel : ViewModelBase
         try
         {
             var comments = await _scraper.ScrapeCommentsAsync(Url);
-            Status = T("collect.done", new() { ["count"] = comments.Count.ToString() });
-            History.Insert(0, $"{DateTime.Now:HH:mm}  {Url}  — {comments.Count}");
+            var saved = _db.InsertComments(comments);
+            Status = T("collect.done", new() { ["count"] = saved.ToString() });
+            History.Insert(0, $"{DateTime.Now:HH:mm}  {Url}  — {saved}/{comments.Count}");
         }
         catch (Exception ex) { Status = T("collect.fail", new() { ["error"] = ex.Message }); }
         finally { IsRunning = false; }
